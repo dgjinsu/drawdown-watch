@@ -44,11 +44,19 @@ public class NotificationSetting extends BaseEntity {
     @Column(length = 500)
     private String slackWebhookUrl;
 
+    @Column(length = 500)
+    private String discordWebhookUrl;
+
     @Column(nullable = false)
     private boolean enabled;
 
-    public void update(String telegramChatId, String slackWebhookUrl) {
+    public void update(String telegramChatId, String slackWebhookUrl, String discordWebhookUrl) {
         this.telegramChatId = telegramChatId;
         this.slackWebhookUrl = slackWebhookUrl;
+        this.discordWebhookUrl = discordWebhookUrl;
+    }
+
+    public void toggleEnabled() {
+        this.enabled = !this.enabled;
     }
 }

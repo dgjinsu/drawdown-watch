@@ -7,6 +7,8 @@ public record NotificationSettingResponse(
         String channelType,
         String telegramChatId,
         String slackWebhookUrl,
+        String discordWebhookUrl,
+        String email,
         boolean enabled,
         LocalDateTime createdAt
 ) {

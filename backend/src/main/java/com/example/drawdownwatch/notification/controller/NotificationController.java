@@ -6,6 +6,8 @@ import com.example.drawdownwatch.notification.dto.NotificationSettingRequest;
 import com.example.drawdownwatch.notification.dto.NotificationSettingResponse;
 import com.example.drawdownwatch.notification.entity.NotificationSetting;
 import com.example.drawdownwatch.notification.repository.NotificationSettingRepository;
+import com.example.drawdownwatch.notification.service.DiscordSender;
+import com.example.drawdownwatch.notification.service.EmailSender;
 import com.example.drawdownwatch.notification.service.SlackSender;
 import com.example.drawdownwatch.notification.service.TelegramSender;
 import com.example.drawdownwatch.user.entity.User;
@@ -18,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -37,6 +40,8 @@ public class NotificationController {
     private final NotificationSettingRepository notificationSettingRepository;
     private final TelegramSender telegramSender;
     private final SlackSender slackSender;
+    private final EmailSender emailSender;
+    private final DiscordSender discordSender;
     private final EntityManager entityManager;
 
     @PostMapping
@@ -46,7 +51,7 @@ public class NotificationController {
 
         notificationSettingRepository.findByUserIdAndChannelType(userId, request.channelType())
                 .ifPresent(s -> {
-                    throw new BusinessException(ErrorCode.NOTIFICATION_SETTING_NOT_FOUND);
+                    throw new BusinessException(ErrorCode.DUPLICATE_NOTIFICATION_SETTING);
                 });
 
         User user = entityManager.getReference(User.class, userId);
@@ -56,6 +61,7 @@ public class NotificationController {
                 .channelType(request.channelType())
                 .telegramChatId(request.telegramChatId())
                 .slackWebhookUrl(request.slackWebhookUrl())
+                .discordWebhookUrl(request.discordWebhookUrl())
                 .enabled(true)
                 .build();
 
@@ -76,7 +82,7 @@ public class NotificationController {
             @Valid @RequestBody NotificationSettingRequest request) {
         Long userId = getCurrentUserId();
         NotificationSetting setting = findSettingWithOwnerCheck(userId, id);
-        setting.update(request.telegramChatId(), request.slackWebhookUrl());
+        setting.update(request.telegramChatId(), request.slackWebhookUrl(), request.discordWebhookUrl());
         NotificationSetting saved = notificationSettingRepository.save(setting);
         return ResponseEntity.ok(toResponse(saved));
     }
@@ -87,6 +93,15 @@ public class NotificationController {
         NotificationSetting setting = findSettingWithOwnerCheck(userId, id);
         notificationSettingRepository.delete(setting);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/toggle")
+    public ResponseEntity<NotificationSettingResponse> toggleEnabled(@PathVariable Long id) {
+        Long userId = getCurrentUserId();
+        NotificationSetting setting = findSettingWithOwnerCheck(userId, id);
+        setting.toggleEnabled();
+        NotificationSetting saved = notificationSettingRepository.save(setting);
+        return ResponseEntity.ok(toResponse(saved));
     }
 
     @PostMapping("/{id}/test")
@@ -100,6 +115,10 @@ public class NotificationController {
                 telegramSender.send(setting.getTelegramChatId(), testMessage);
             } else if ("SLACK".equals(setting.getChannelType())) {
                 slackSender.send(setting.getSlackWebhookUrl(), testMessage);
+            } else if ("EMAIL".equals(setting.getChannelType())) {
+                emailSender.send(setting.getUser().getEmail(), "[MDD Watch] 알림 테스트", testMessage);
+            } else if ("DISCORD".equals(setting.getChannelType())) {
+                discordSender.send(setting.getDiscordWebhookUrl(), testMessage);
             }
             return ResponseEntity.ok(Map.of("result", "테스트 알림 발송 성공"));
         } catch (Exception e) {
@@ -118,21 +137,25 @@ public class NotificationController {
     }
 
     private NotificationSettingResponse toResponse(NotificationSetting setting) {
-        String maskedWebhookUrl = null;
-        if (setting.getSlackWebhookUrl() != null && setting.getSlackWebhookUrl().length() > 20) {
-            maskedWebhookUrl = setting.getSlackWebhookUrl().substring(0, 20) + "***";
-        } else {
-            maskedWebhookUrl = setting.getSlackWebhookUrl();
-        }
+        String email = "EMAIL".equals(setting.getChannelType()) ? setting.getUser().getEmail() : null;
 
         return new NotificationSettingResponse(
                 setting.getId(),
                 setting.getChannelType(),
                 setting.getTelegramChatId(),
-                maskedWebhookUrl,
+                maskUrl(setting.getSlackWebhookUrl()),
+                maskUrl(setting.getDiscordWebhookUrl()),
+                email,
                 setting.isEnabled(),
                 setting.getCreatedAt()
         );
+    }
+
+    private String maskUrl(String url) {
+        if (url != null && url.length() > 20) {
+            return url.substring(0, 20) + "***";
+        }
+        return url;
     }
 
     private Long getCurrentUserId() {

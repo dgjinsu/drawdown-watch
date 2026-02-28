@@ -1,5 +1,6 @@
 package com.example.drawdownwatch.notification.service;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -20,6 +21,13 @@ public class TelegramSender {
 
     @Value("${app.notification.telegram.bot-token}")
     private String botToken;
+
+    @PostConstruct
+    void validateBotToken() {
+        if (botToken == null || botToken.isBlank()) {
+            log.warn("텔레그램 봇 토큰이 설정되지 않았습니다. TELEGRAM_BOT_TOKEN 환경변수를 확인하세요.");
+        }
+    }
 
     public void send(String chatId, String message) {
         String url = "/bot" + botToken + "/sendMessage";

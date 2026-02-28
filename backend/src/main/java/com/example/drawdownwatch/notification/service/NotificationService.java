@@ -30,6 +30,8 @@ public class NotificationService {
     private final NotificationLogRepository notificationLogRepository;
     private final TelegramSender telegramSender;
     private final SlackSender slackSender;
+    private final EmailSender emailSender;
+    private final DiscordSender discordSender;
 
     @Value("${app.notification.cooldown-hours}")
     private int cooldownHours;
@@ -64,6 +66,10 @@ public class NotificationService {
                     telegramSender.send(setting.getTelegramChatId(), message);
                 } else if ("SLACK".equals(setting.getChannelType())) {
                     slackSender.send(setting.getSlackWebhookUrl(), message);
+                } else if ("EMAIL".equals(setting.getChannelType())) {
+                    emailSender.send(setting.getUser().getEmail(), "[MDD Watch] MDD 경보", message);
+                } else if ("DISCORD".equals(setting.getChannelType())) {
+                    discordSender.send(setting.getDiscordWebhookUrl(), message);
                 }
                 saveLog(item, snapshot, setting.getChannelType(), "SENT", message);
             } catch (Exception e) {

@@ -26,6 +26,7 @@ public enum ErrorCode {
     // Notification
     NOTIFICATION_SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTI001", "알림 설정을 찾을 수 없습니다"),
     NOTIFICATION_SEND_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "NOTI002", "알림 발송에 실패했습니다"),
+    DUPLICATE_NOTIFICATION_SETTING(HttpStatus.CONFLICT, "NOTI003", "이미 등록된 알림 채널입니다"),
 
     // Common
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SYS001", "내부 서버 오류가 발생했습니다");

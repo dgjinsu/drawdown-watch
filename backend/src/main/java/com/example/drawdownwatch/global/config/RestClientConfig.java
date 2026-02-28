@@ -45,4 +45,15 @@ public class RestClientConfig {
                 .requestFactory(factory)
                 .build();
     }
+
+    @Bean("discordRestClient")
+    public RestClient discordRestClient(
+            @Value("${app.notification.discord.timeout}") int timeout) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(timeout);
+        factory.setReadTimeout(timeout);
+        return RestClient.builder()
+                .requestFactory(factory)
+                .build();
+    }
 }
