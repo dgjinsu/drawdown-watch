@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { UserPlus } from 'lucide-react';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -48,88 +53,87 @@ export default function SignupPage() {
   const displayError = validationError || error;
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-gray-800 rounded-xl shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-white mb-2 text-center">MDD Watch</h1>
-        <p className="text-gray-400 text-sm text-center mb-8">새 계정을 만드세요</p>
+    <div className="min-h-screen glass-gradient-bg flex items-center justify-center px-4 relative overflow-hidden">
+      <div className="gradient-orb gradient-orb-indigo w-150 h-150 -top-64 -right-64 absolute" />
+      <div className="gradient-orb gradient-orb-violet w-125 h-125 -bottom-48 -left-48 absolute" />
 
-        {displayError && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-lg">
-            <p className="text-red-400 text-sm">{displayError}</p>
-          </div>
-        )}
+      <Card className="w-full max-w-md glass-card-elevated relative z-10 py-8">
+        <CardHeader className="text-center pb-2">
+          <h1 className="text-2xl font-bold bg-linear-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+            MDD Watch
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">새 계정을 만드세요</p>
+        </CardHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
-              이메일
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              placeholder="example@email.com"
-              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
+        <CardContent>
+          {displayError && (
+            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <p className="text-destructive text-sm">{displayError}</p>
+            </div>
+          )}
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
-              비밀번호
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setValidationError(null);
-              }}
-              required
-              autoComplete="new-password"
-              placeholder="8자 이상 입력하세요"
-              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">이메일</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                placeholder="example@email.com"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="passwordConfirm" className="block text-sm font-medium text-gray-300 mb-1">
-              비밀번호 확인
-            </label>
-            <input
-              id="passwordConfirm"
-              type="password"
-              value={passwordConfirm}
-              onChange={(e) => {
-                setPasswordConfirm(e.target.value);
-                setValidationError(null);
-              }}
-              required
-              autoComplete="new-password"
-              placeholder="비밀번호를 다시 입력하세요"
-              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">비밀번호</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setValidationError(null);
+                }}
+                required
+                autoComplete="new-password"
+                placeholder="8자 이상 입력하세요"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:cursor-not-allowed text-white font-medium rounded-lg px-4 py-2.5 text-sm transition-colors mt-2"
-          >
-            {loading ? '가입 중...' : '회원가입'}
-          </button>
-        </form>
+            <div className="space-y-2">
+              <Label htmlFor="passwordConfirm">비밀번호 확인</Label>
+              <Input
+                id="passwordConfirm"
+                type="password"
+                value={passwordConfirm}
+                onChange={(e) => {
+                  setPasswordConfirm(e.target.value);
+                  setValidationError(null);
+                }}
+                required
+                autoComplete="new-password"
+                placeholder="비밀번호를 다시 입력하세요"
+              />
+            </div>
 
-        <p className="mt-6 text-center text-sm text-gray-400">
-          이미 계정이 있으신가요?{' '}
-          <Link to="/login" className="text-indigo-400 hover:text-indigo-300 transition-colors">
-            로그인
-          </Link>
-        </p>
-      </div>
+            <Button type="submit" disabled={loading} className="w-full mt-2 cursor-pointer">
+              <UserPlus className="size-4 mr-2" />
+              {loading ? '가입 중...' : '회원가입'}
+            </Button>
+          </form>
+        </CardContent>
+
+        <CardFooter className="justify-center">
+          <p className="text-sm text-muted-foreground">
+            이미 계정이 있으신가요?{' '}
+            <Link to="/login" className="text-primary hover:text-primary/80 transition-colors">
+              로그인
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

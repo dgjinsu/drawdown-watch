@@ -1,14 +1,41 @@
 import { useState, useEffect, useCallback } from 'react';
 import { watchlistApi } from '@/api/watchlist';
 import type { WatchlistItem, WatchlistAddRequest, WatchlistUpdateRequest, MddPeriod } from '@/types';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { Plus, Pencil, Trash2, TrendingDown, AlertTriangle, BarChart3, Target } from 'lucide-react';
 
 const MDD_PERIODS: MddPeriod[] = ['4W', '12W', '26W', '52W'];
 
 function getMddColorClass(mdd: number | null): string {
-  if (mdd === null) return 'text-gray-400';
-  if (mdd > -10) return 'text-green-400';
+  if (mdd === null) return 'text-muted-foreground';
+  if (mdd > -10) return 'text-emerald-400';
   if (mdd > -20) return 'text-yellow-400';
   return 'text-red-400';
+}
+
+function getMddBadgeClass(mdd: number | null): string {
+  if (mdd === null) return '';
+  if (mdd > -10) return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20';
+  if (mdd > -20) return 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20';
+  return 'bg-red-500/15 text-red-400 border-red-500/20';
 }
 
 function isAlertRow(item: WatchlistItem): boolean {
@@ -25,19 +52,90 @@ function formatMdd(mdd: number | null): string {
   return `${mdd.toFixed(2)}%`;
 }
 
-// ─── Add Modal ───────────────────────────────────────────────────────────────
+// ─── Summary Stats ────────────────────────────────────────────────────────────
 
-interface AddModalProps {
-  onClose: () => void;
+function SummaryStats({ items }: { items: WatchlistItem[] }) {
+  const total = items.length;
+  const alertCount = items.filter((i) => isAlertRow(i)).length;
+  const mdds = items.filter((i) => i.currentMdd !== null).map((i) => i.currentMdd!);
+  const avgMdd = mdds.length > 0 ? mdds.reduce((a, b) => a + b, 0) / mdds.length : 0;
+  const worstMdd = mdds.length > 0 ? Math.min(...mdds) : 0;
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <Card className="glass-card p-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <BarChart3 className="size-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">총 종목</p>
+            <p className="text-2xl font-bold text-foreground mt-0.5">{total}</p>
+          </div>
+        </div>
+      </Card>
+      <Card className="glass-card p-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-red-500/10">
+            <AlertTriangle className="size-4 text-red-400" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">경고 종목</p>
+            <p className="text-2xl font-bold text-red-400 mt-0.5">{alertCount}</p>
+          </div>
+        </div>
+      </Card>
+      <Card className="glass-card p-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-yellow-500/10">
+            <TrendingDown className="size-4 text-yellow-400" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">평균 MDD</p>
+            <p className={cn('text-2xl font-bold mt-0.5', getMddColorClass(avgMdd || null))}>
+              {mdds.length > 0 ? `${avgMdd.toFixed(2)}%` : '-'}
+            </p>
+          </div>
+        </div>
+      </Card>
+      <Card className="glass-card p-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-emerald-500/10">
+            <Target className="size-4 text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">최대 낙폭</p>
+            <p className={cn('text-2xl font-bold mt-0.5', getMddColorClass(worstMdd || null))}>
+              {mdds.length > 0 ? `${worstMdd.toFixed(2)}%` : '-'}
+            </p>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Add Dialog ───────────────────────────────────────────────────────────────
+
+interface AddDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onAdded: () => void;
 }
 
-function AddModal({ onClose, onAdded }: AddModalProps) {
+function AddDialog({ open, onOpenChange, onAdded }: AddDialogProps) {
   const [symbol, setSymbol] = useState('');
   const [threshold, setThreshold] = useState('');
   const [mddPeriod, setMddPeriod] = useState<MddPeriod>('52W');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const reset = () => {
+    setSymbol('');
+    setThreshold('');
+    setMddPeriod('52W');
+    setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +161,8 @@ function AddModal({ onClose, onAdded }: AddModalProps) {
     try {
       await watchlistApi.add(payload);
       onAdded();
-      onClose();
+      onOpenChange(false);
+      reset();
     } catch {
       setError('종목 추가에 실패했습니다. 다시 시도해 주세요.');
     } finally {
@@ -72,100 +171,68 @@ function AddModal({ onClose, onAdded }: AddModalProps) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-xl">
-        <h2 className="text-lg font-semibold text-white mb-4">종목 추가</h2>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="block text-sm text-gray-300 mb-1" htmlFor="add-symbol">
-              종목 심볼
-            </label>
-            <input
-              id="add-symbol"
-              type="text"
-              placeholder="예: AAPL, 005930"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>종목 추가</DialogTitle>
+          <DialogDescription>모니터링할 종목의 심볼과 MDD 임계값을 설정하세요.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="add-symbol">종목 심볼</Label>
+            <Input id="add-symbol" placeholder="예: AAPL, 005930" value={symbol} onChange={(e) => setSymbol(e.target.value)} />
           </div>
-
-          <div>
-            <label className="block text-sm text-gray-300 mb-1" htmlFor="add-threshold">
-              임계값 (%)
-            </label>
-            <input
-              id="add-threshold"
-              type="number"
-              placeholder="예: -20"
-              value={threshold}
-              onChange={(e) => setThreshold(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+          <div className="space-y-2">
+            <Label htmlFor="add-threshold">임계값 (%)</Label>
+            <Input id="add-threshold" type="number" placeholder="예: -20" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
           </div>
-
-          <div>
-            <label className="block text-sm text-gray-300 mb-1" htmlFor="add-period">
-              MDD 기간
-            </label>
-            <select
-              id="add-period"
-              value={mddPeriod}
-              onChange={(e) => setMddPeriod(e.target.value as MddPeriod)}
-              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {MDD_PERIODS.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <Label>MDD 기간</Label>
+            <Select value={mddPeriod} onValueChange={(v) => setMddPeriod(v as MddPeriod)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MDD_PERIODS.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-
-          {error && (
-            <p className="text-sm text-red-400" role="alert">{error}</p>
-          )}
-
-          <div className="flex gap-2 justify-end pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-sm bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors cursor-pointer"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 rounded-lg text-sm bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors cursor-pointer"
-            >
-              {loading ? '추가 중...' : '추가'}
-            </button>
-          </div>
+          {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} className="cursor-pointer">취소</Button>
+            <Button type="submit" disabled={loading} className="cursor-pointer">{loading ? '추가 중...' : '추가'}</Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-// ─── Edit Modal ───────────────────────────────────────────────────────────────
+// ─── Edit Dialog ──────────────────────────────────────────────────────────────
 
-interface EditModalProps {
-  item: WatchlistItem;
+interface EditDialogProps {
+  item: WatchlistItem | null;
   onClose: () => void;
   onUpdated: () => void;
 }
 
-function EditModal({ item, onClose, onUpdated }: EditModalProps) {
-  const [threshold, setThreshold] = useState(String(item.threshold));
-  const [mddPeriod, setMddPeriod] = useState<MddPeriod>(item.mddPeriod);
+function EditDialog({ item, onClose, onUpdated }: EditDialogProps) {
+  const [threshold, setThreshold] = useState('');
+  const [mddPeriod, setMddPeriod] = useState<MddPeriod>('52W');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (item) {
+      setThreshold(String(item.threshold));
+      setMddPeriod(item.mddPeriod);
+      setError(null);
+    }
+  }, [item]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!item) return;
     setError(null);
 
     const thresholdNum = parseFloat(threshold);
@@ -174,10 +241,7 @@ function EditModal({ item, onClose, onUpdated }: EditModalProps) {
       return;
     }
 
-    const payload: WatchlistUpdateRequest = {
-      threshold: thresholdNum,
-      mddPeriod,
-    };
+    const payload: WatchlistUpdateRequest = { threshold: thresholdNum, mddPeriod };
 
     setLoading(true);
     try {
@@ -192,67 +256,36 @@ function EditModal({ item, onClose, onUpdated }: EditModalProps) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-xl">
-        <h2 className="text-lg font-semibold text-white mb-1">종목 수정</h2>
-        <p className="text-sm text-gray-400 mb-4">{item.symbol} · {item.stockName}</p>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="block text-sm text-gray-300 mb-1" htmlFor="edit-threshold">
-              임계값 (%)
-            </label>
-            <input
-              id="edit-threshold"
-              type="number"
-              value={threshold}
-              onChange={(e) => setThreshold(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+    <Dialog open={!!item} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>종목 수정</DialogTitle>
+          {item && <DialogDescription>{item.symbol} · {item.stockName}</DialogDescription>}
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-threshold">임계값 (%)</Label>
+            <Input id="edit-threshold" type="number" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
           </div>
-
-          <div>
-            <label className="block text-sm text-gray-300 mb-1" htmlFor="edit-period">
-              MDD 기간
-            </label>
-            <select
-              id="edit-period"
-              value={mddPeriod}
-              onChange={(e) => setMddPeriod(e.target.value as MddPeriod)}
-              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {MDD_PERIODS.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <Label>MDD 기간</Label>
+            <Select value={mddPeriod} onValueChange={(v) => setMddPeriod(v as MddPeriod)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MDD_PERIODS.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-
-          {error && (
-            <p className="text-sm text-red-400" role="alert">{error}</p>
-          )}
-
-          <div className="flex gap-2 justify-end pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-sm bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors cursor-pointer"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 rounded-lg text-sm bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors cursor-pointer"
-            >
-              {loading ? '저장 중...' : '저장'}
-            </button>
-          </div>
+          {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onClose} className="cursor-pointer">취소</Button>
+            <Button type="submit" disabled={loading} className="cursor-pointer">{loading ? '저장 중...' : '저장'}</Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -262,9 +295,10 @@ export default function DashboardPage() {
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const [editItem, setEditItem] = useState<WatchlistItem | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<WatchlistItem | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -283,16 +317,17 @@ export default function DashboardPage() {
     fetchItems();
   }, [fetchItems]);
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('이 종목을 삭제하시겠습니까?')) return;
-    setDeletingId(id);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
     try {
-      await watchlistApi.remove(id);
-      setItems((prev) => prev.filter((item) => item.id !== id));
+      await watchlistApi.remove(deleteTarget.id);
+      setItems((prev) => prev.filter((item) => item.id !== deleteTarget.id));
     } catch {
-      alert('삭제에 실패했습니다. 다시 시도해 주세요.');
+      // 삭제 실패 시 무시
     } finally {
       setDeletingId(null);
+      setDeleteTarget(null);
     }
   };
 
@@ -301,160 +336,134 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">워치리스트</h1>
-          <p className="text-sm text-gray-400 mt-1">MDD 임계값 초과 시 알림을 받을 종목을 관리합니다.</p>
+          <h1 className="text-2xl font-bold text-foreground">워치리스트</h1>
+          <p className="text-sm text-muted-foreground mt-1">MDD 임계값 초과 시 알림을 받을 종목을 관리합니다.</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-500 transition-colors cursor-pointer"
-        >
-          + 종목 추가
-        </button>
+        <Button onClick={() => setShowAddDialog(true)} className="cursor-pointer">
+          <Plus className="size-4 mr-2" />
+          종목 추가
+        </Button>
       </div>
 
       {/* Content */}
       {loading ? (
         <div className="flex justify-center items-center py-20" aria-label="로딩 중">
-          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : error ? (
-        <div className="bg-gray-800 rounded-xl p-6 text-center">
-          <p className="text-red-400 mb-3">{error}</p>
-          <button
-            onClick={fetchItems}
-            className="px-4 py-2 rounded-lg text-sm bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors cursor-pointer"
-          >
-            다시 시도
-          </button>
-        </div>
+        <Card className="glass-card p-6 text-center">
+          <p className="text-destructive mb-3">{error}</p>
+          <Button variant="secondary" onClick={fetchItems} className="cursor-pointer">다시 시도</Button>
+        </Card>
       ) : items.length === 0 ? (
-        <div className="bg-gray-800 rounded-xl p-12 text-center">
-          <p className="text-gray-400 mb-2">등록된 종목이 없습니다.</p>
-          <p className="text-sm text-gray-500">상단의 종목 추가 버튼을 클릭하여 모니터링할 종목을 추가하세요.</p>
-        </div>
+        <Card className="glass-card p-12 text-center">
+          <p className="text-muted-foreground mb-2">등록된 종목이 없습니다.</p>
+          <p className="text-sm text-muted-foreground/60">상단의 종목 추가 버튼을 클릭하여 모니터링할 종목을 추가하세요.</p>
+        </Card>
       ) : (
-        <div className="bg-gray-800 rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-700 text-gray-400 text-left">
-                  <th className="px-4 py-3 font-medium">종목</th>
-                  <th className="px-4 py-3 font-medium">시장</th>
-                  <th className="px-4 py-3 font-medium text-right">현재 MDD</th>
-                  <th className="px-4 py-3 font-medium text-right">임계값</th>
-                  <th className="px-4 py-3 font-medium text-center">기간</th>
-                  <th className="px-4 py-3 font-medium text-right">현재가</th>
-                  <th className="px-4 py-3 font-medium text-right">고점가</th>
-                  <th className="px-4 py-3 font-medium text-center">계산일</th>
-                  <th className="px-4 py-3 font-medium text-center">관리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => {
-                  const alert = isAlertRow(item);
-                  return (
-                    <tr
-                      key={item.id}
-                      className={`border-b border-gray-700/50 transition-colors ${
-                        alert ? 'bg-red-900/20 hover:bg-red-900/30' : 'hover:bg-gray-700/40'
-                      }`}
-                    >
-                      {/* 종목 */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {alert && (
-                            <span
-                              className="inline-block w-2 h-2 rounded-full bg-red-500 shrink-0"
-                              aria-label="임계값 초과 경고"
-                            />
-                          )}
-                          <div>
-                            <p className="font-semibold text-white">{item.symbol}</p>
-                            <p className="text-xs text-gray-400">{item.stockName}</p>
+        <>
+          <SummaryStats items={items} />
+
+          <Card className="glass-card overflow-hidden py-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-white/5 hover:bg-transparent">
+                    <TableHead className="px-4">종목</TableHead>
+                    <TableHead className="px-4">시장</TableHead>
+                    <TableHead className="px-4 text-right">현재 MDD</TableHead>
+                    <TableHead className="px-4 text-right">임계값</TableHead>
+                    <TableHead className="px-4 text-center">기간</TableHead>
+                    <TableHead className="px-4 text-right">현재가</TableHead>
+                    <TableHead className="px-4 text-right">고점가</TableHead>
+                    <TableHead className="px-4 text-center">계산일</TableHead>
+                    <TableHead className="px-4 text-center">관리</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => {
+                    const alert = isAlertRow(item);
+                    return (
+                      <TableRow
+                        key={item.id}
+                        className={cn(
+                          'border-white/5 transition-colors',
+                          alert && 'bg-red-500/5 hover:bg-red-500/10',
+                        )}
+                      >
+                        <TableCell className="px-4">
+                          <div className="flex items-center gap-2">
+                            {alert && <span className="inline-block size-2 rounded-full bg-red-500 animate-pulse shrink-0" />}
+                            <div>
+                              <p className="font-semibold text-foreground">{item.symbol}</p>
+                              <p className="text-xs text-muted-foreground">{item.stockName}</p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-
-                      {/* 시장 */}
-                      <td className="px-4 py-3 text-gray-300">{item.market}</td>
-
-                      {/* 현재 MDD */}
-                      <td className={`px-4 py-3 text-right font-medium ${getMddColorClass(item.currentMdd)}`}>
-                        {formatMdd(item.currentMdd)}
-                      </td>
-
-                      {/* 임계값 */}
-                      <td className="px-4 py-3 text-right text-gray-300">
-                        {item.threshold.toFixed(2)}%
-                      </td>
-
-                      {/* 기간 */}
-                      <td className="px-4 py-3 text-center text-gray-300">{item.mddPeriod}</td>
-
-                      {/* 현재가 */}
-                      <td className="px-4 py-3 text-right text-gray-300">
-                        {formatPrice(item.currentPrice)}
-                      </td>
-
-                      {/* 고점가 */}
-                      <td className="px-4 py-3 text-right text-gray-300">
-                        {formatPrice(item.peakPrice)}
-                      </td>
-
-                      {/* 계산일 */}
-                      <td className="px-4 py-3 text-center text-gray-400 text-xs">
-                        {item.calcDate ?? '-'}
-                      </td>
-
-                      {/* 관리 버튼 */}
-                      <td className="px-4 py-3">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => setEditItem(item)}
-                            aria-label={`${item.symbol} 수정`}
-                            className="px-3 py-1 rounded-md text-xs bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors cursor-pointer"
-                          >
-                            수정
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item.id)}
-                            disabled={deletingId === item.id}
-                            aria-label={`${item.symbol} 삭제`}
-                            className="px-3 py-1 rounded-md text-xs bg-red-600 text-white hover:bg-red-500 disabled:opacity-50 transition-colors cursor-pointer"
-                          >
-                            {deletingId === item.id ? '...' : '삭제'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="px-4 py-3 border-t border-gray-700 text-xs text-gray-500">
-            총 {items.length}개 종목
-          </div>
-        </div>
+                        </TableCell>
+                        <TableCell className="px-4 text-muted-foreground">{item.market}</TableCell>
+                        <TableCell className="px-4 text-right">
+                          <Badge variant="outline" className={cn('font-mono', getMddBadgeClass(item.currentMdd))}>
+                            {formatMdd(item.currentMdd)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-4 text-right text-muted-foreground">{item.threshold.toFixed(2)}%</TableCell>
+                        <TableCell className="px-4 text-center text-muted-foreground">{item.mddPeriod}</TableCell>
+                        <TableCell className="px-4 text-right text-muted-foreground">{formatPrice(item.currentPrice)}</TableCell>
+                        <TableCell className="px-4 text-right text-muted-foreground">{formatPrice(item.peakPrice)}</TableCell>
+                        <TableCell className="px-4 text-center text-muted-foreground text-xs">{item.calcDate ?? '-'}</TableCell>
+                        <TableCell className="px-4">
+                          <div className="flex justify-center gap-1.5">
+                            <Button variant="ghost" size="icon" onClick={() => setEditItem(item)} aria-label={`${item.symbol} 수정`} className="size-8 cursor-pointer">
+                              <Pencil className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteTarget(item)}
+                              disabled={deletingId === item.id}
+                              aria-label={`${item.symbol} 삭제`}
+                              className="size-8 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="px-4 py-3 border-t border-border text-xs text-muted-foreground">
+              총 {items.length}개 종목
+            </div>
+          </Card>
+        </>
       )}
 
-      {/* Add Modal */}
-      {showAddModal && (
-        <AddModal
-          onClose={() => setShowAddModal(false)}
-          onAdded={fetchItems}
-        />
-      )}
+      {/* Add Dialog */}
+      <AddDialog open={showAddDialog} onOpenChange={setShowAddDialog} onAdded={fetchItems} />
 
-      {/* Edit Modal */}
-      {editItem && (
-        <EditModal
-          item={editItem}
-          onClose={() => setEditItem(null)}
-          onUpdated={fetchItems}
-        />
-      )}
+      {/* Edit Dialog */}
+      <EditDialog item={editItem} onClose={() => setEditItem(null)} onUpdated={fetchItems} />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>종목 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.symbol} ({deleteTarget?.stockName})을 워치리스트에서 삭제하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

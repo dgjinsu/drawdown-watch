@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { notificationApi } from '@/api/notification';
 import type { NotificationSetting, ChannelType, NotificationSettingRequest } from '@/types';
-
-interface Toast {
-  id: number;
-  message: string;
-  type: 'success' | 'error';
-}
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Pencil, Trash2, Send, Plus } from 'lucide-react';
 
 interface EditState {
   id: number;
@@ -32,34 +34,15 @@ export default function NotificationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 추가 폼 상태
   const [addChannelType, setAddChannelType] = useState<ChannelType>('TELEGRAM');
   const [addTelegramChatId, setAddTelegramChatId] = useState('');
   const [addSlackWebhookUrl, setAddSlackWebhookUrl] = useState('');
   const [adding, setAdding] = useState(false);
 
-  // 수정 상태
   const [editState, setEditState] = useState<EditState | null>(null);
   const [updating, setUpdating] = useState(false);
-
-  // 삭제 중인 ID
   const [removingId, setRemovingId] = useState<number | null>(null);
-
-  // 테스트 중인 ID
   const [testingId, setTestingId] = useState<number | null>(null);
-
-  // 토스트
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [toastCounter, setToastCounter] = useState(0);
-
-  const showToast = useCallback((message: string, type: 'success' | 'error') => {
-    const id = toastCounter + 1;
-    setToastCounter((c) => c + 1);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3500);
-  }, [toastCounter]);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -95,9 +78,9 @@ export default function NotificationPage() {
       setAddTelegramChatId('');
       setAddSlackWebhookUrl('');
       await fetchSettings();
-      showToast('알림 채널이 추가되었습니다.', 'success');
+      toast.success('알림 채널이 추가되었습니다.');
     } catch {
-      showToast('알림 채널 추가에 실패했습니다.', 'error');
+      toast.error('알림 채널 추가에 실패했습니다.');
     } finally {
       setAdding(false);
     }
@@ -111,9 +94,7 @@ export default function NotificationPage() {
     });
   };
 
-  const handleEditCancel = () => {
-    setEditState(null);
-  };
+  const handleEditCancel = () => setEditState(null);
 
   const handleEditSave = async (setting: NotificationSetting) => {
     if (!editState) return;
@@ -129,23 +110,22 @@ export default function NotificationPage() {
       await notificationApi.update(setting.id, data);
       setEditState(null);
       await fetchSettings();
-      showToast('알림 채널이 수정되었습니다.', 'success');
+      toast.success('알림 채널이 수정되었습니다.');
     } catch {
-      showToast('알림 채널 수정에 실패했습니다.', 'error');
+      toast.error('알림 채널 수정에 실패했습니다.');
     } finally {
       setUpdating(false);
     }
   };
 
   const handleRemove = async (id: number) => {
-    if (!window.confirm('이 알림 채널을 삭제하시겠습니까?')) return;
     try {
       setRemovingId(id);
       await notificationApi.remove(id);
       await fetchSettings();
-      showToast('알림 채널이 삭제되었습니다.', 'success');
+      toast.success('알림 채널이 삭제되었습니다.');
     } catch {
-      showToast('알림 채널 삭제에 실패했습니다.', 'error');
+      toast.error('알림 채널 삭제에 실패했습니다.');
     } finally {
       setRemovingId(null);
     }
@@ -155,9 +135,9 @@ export default function NotificationPage() {
     try {
       setTestingId(id);
       const res = await notificationApi.test(id);
-      showToast(res.data.result || '테스트 알림이 발송되었습니다.', 'success');
+      toast.success(res.data.result || '테스트 알림이 발송되었습니다.');
     } catch {
-      showToast('테스트 알림 발송에 실패했습니다.', 'error');
+      toast.error('테스트 알림 발송에 실패했습니다.');
     } finally {
       setTestingId(null);
     }
@@ -165,124 +145,89 @@ export default function NotificationPage() {
 
   return (
     <div>
-      {/* 토스트 */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2" aria-live="polite">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
-              toast.type === 'success'
-                ? 'bg-emerald-700 text-white'
-                : 'bg-red-700 text-white'
-            }`}
-          >
-            {toast.message}
-          </div>
-        ))}
-      </div>
-
       <div>
-        <h1 className="text-2xl font-bold mb-1">알림 설정</h1>
-        <p className="text-gray-400 text-sm mb-8">Telegram 또는 Slack으로 MDD 알림을 받으세요.</p>
+        <h1 className="text-2xl font-bold text-foreground mb-1">알림 설정</h1>
+        <p className="text-muted-foreground text-sm mb-8">Telegram 또는 Slack으로 MDD 알림을 받으세요.</p>
 
         {/* 추가 폼 */}
-        <div className="bg-gray-800 rounded-xl p-6 mb-6">
-          <h2 className="text-base font-semibold mb-4">알림 채널 추가</h2>
+        <Card className="glass-card p-6 mb-6">
+          <h2 className="text-base font-semibold text-foreground mb-4">알림 채널 추가</h2>
           <form onSubmit={handleAdd} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">채널 유형</label>
-              <div className="flex gap-3">
-                <button
+            <div className="space-y-2">
+              <Label>채널 유형</Label>
+              <div className="flex gap-2">
+                <Button
                   type="button"
+                  variant={addChannelType === 'TELEGRAM' ? 'default' : 'secondary'}
                   onClick={() => setAddChannelType('TELEGRAM')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    addChannelType === 'TELEGRAM'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
+                  className={cn('cursor-pointer', addChannelType === 'TELEGRAM' && 'bg-blue-600 hover:bg-blue-500')}
                 >
                   Telegram
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant={addChannelType === 'SLACK' ? 'default' : 'secondary'}
                   onClick={() => setAddChannelType('SLACK')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    addChannelType === 'SLACK'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
+                  className={cn('cursor-pointer', addChannelType === 'SLACK' && 'bg-violet-600 hover:bg-violet-500')}
                 >
                   Slack
-                </button>
+                </Button>
               </div>
             </div>
 
             {addChannelType === 'TELEGRAM' ? (
-              <div>
-                <label htmlFor="add-telegram-chat-id" className="block text-sm font-medium text-gray-300 mb-1">
-                  Chat ID
-                </label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="add-telegram-chat-id">Chat ID</Label>
+                <Input
                   id="add-telegram-chat-id"
                   type="text"
                   value={addTelegramChatId}
                   onChange={(e) => setAddTelegramChatId(e.target.value)}
                   placeholder="예: 123456789"
                   required
-                  className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
             ) : (
-              <div>
-                <label htmlFor="add-slack-webhook-url" className="block text-sm font-medium text-gray-300 mb-1">
-                  Webhook URL
-                </label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="add-slack-webhook-url">Webhook URL</Label>
+                <Input
                   id="add-slack-webhook-url"
                   type="url"
                   value={addSlackWebhookUrl}
                   onChange={(e) => setAddSlackWebhookUrl(e.target.value)}
                   placeholder="https://hooks.slack.com/services/..."
                   required
-                  className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={adding}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:cursor-not-allowed text-white font-medium rounded-lg px-5 py-2.5 text-sm transition-colors"
-            >
+            <Button type="submit" disabled={adding} className="cursor-pointer">
+              <Plus className="size-4 mr-2" />
               {adding ? '추가 중...' : '채널 추가'}
-            </button>
+            </Button>
           </form>
-        </div>
+        </Card>
 
         {/* 목록 */}
         <div>
-          <h2 className="text-base font-semibold mb-3">등록된 알림 채널</h2>
+          <h2 className="text-base font-semibold text-foreground mb-3">등록된 알림 채널</h2>
 
           {loading && (
             <div className="flex items-center justify-center py-12">
-              <div
-                className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"
-                role="status"
-                aria-label="로딩 중"
-              />
+              <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" role="status" aria-label="로딩 중" />
             </div>
           )}
 
           {!loading && error && (
-            <div className="bg-red-900/30 border border-red-800 rounded-xl p-4 text-red-400 text-sm">
-              {error}
-            </div>
+            <Card className="glass-card p-4">
+              <p className="text-destructive text-sm">{error}</p>
+            </Card>
           )}
 
           {!loading && !error && settings.length === 0 && (
-            <div className="bg-gray-800 rounded-xl p-8 text-center text-gray-400 text-sm">
-              등록된 알림 채널이 없습니다. 위에서 채널을 추가해보세요.
-            </div>
+            <Card className="glass-card p-8 text-center">
+              <p className="text-muted-foreground text-sm">등록된 알림 채널이 없습니다. 위에서 채널을 추가해보세요.</p>
+            </Card>
           )}
 
           {!loading && !error && settings.length > 0 && (
@@ -290,136 +235,113 @@ export default function NotificationPage() {
               {settings.map((setting) => {
                 const isEditing = editState?.id === setting.id;
                 return (
-                  <li key={setting.id} className="bg-gray-800 rounded-xl p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span
-                          className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                            setting.channelType === 'TELEGRAM'
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-purple-600 text-white'
-                          }`}
-                        >
-                          {setting.channelType === 'TELEGRAM' ? 'Telegram' : 'Slack'}
-                        </span>
-                        <span
-                          className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${
-                            setting.enabled
-                              ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-800'
-                              : 'bg-gray-700 text-gray-400'
-                          }`}
-                        >
-                          {setting.enabled ? '활성' : '비활성'}
-                        </span>
-                      </div>
-                      <span className="shrink-0 text-xs text-gray-500">{formatDate(setting.createdAt)}</span>
-                    </div>
-
-                    {/* 채널 정보 / 수정 폼 */}
-                    {isEditing ? (
-                      <div className="mt-4 space-y-3">
-                        {setting.channelType === 'TELEGRAM' ? (
-                          <div>
-                            <label
-                              htmlFor={`edit-telegram-${setting.id}`}
-                              className="block text-xs font-medium text-gray-400 mb-1"
-                            >
-                              Chat ID
-                            </label>
-                            <input
-                              id={`edit-telegram-${setting.id}`}
-                              type="text"
-                              value={editState.telegramChatId}
-                              onChange={(e) =>
-                                setEditState((prev) => prev ? { ...prev, telegramChatId: e.target.value } : prev)
-                              }
-                              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                          </div>
-                        ) : (
-                          <div>
-                            <label
-                              htmlFor={`edit-slack-${setting.id}`}
-                              className="block text-xs font-medium text-gray-400 mb-1"
-                            >
-                              Webhook URL
-                            </label>
-                            <input
-                              id={`edit-slack-${setting.id}`}
-                              type="url"
-                              value={editState.slackWebhookUrl}
-                              onChange={(e) =>
-                                setEditState((prev) => prev ? { ...prev, slackWebhookUrl: e.target.value } : prev)
-                              }
-                              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                          </div>
-                        )}
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleEditSave(setting)}
-                            disabled={updating}
-                            className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg px-4 py-2 transition-colors"
+                  <li key={setting.id}>
+                    <Card className="glass-card p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              setting.channelType === 'TELEGRAM'
+                                ? 'bg-blue-500/15 text-blue-400 border-blue-500/20'
+                                : 'bg-violet-500/15 text-violet-400 border-violet-500/20',
+                            )}
                           >
-                            {updating ? '저장 중...' : '저장'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleEditCancel}
-                            disabled={updating}
-                            className="bg-gray-700 hover:bg-gray-600 disabled:cursor-not-allowed text-gray-300 text-sm font-medium rounded-lg px-4 py-2 transition-colors"
+                            {setting.channelType === 'TELEGRAM' ? 'Telegram' : 'Slack'}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              setting.enabled
+                                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20'
+                                : 'bg-secondary text-muted-foreground',
+                            )}
                           >
-                            취소
-                          </button>
+                            {setting.enabled ? '활성' : '비활성'}
+                          </Badge>
                         </div>
+                        <span className="shrink-0 text-xs text-muted-foreground">{formatDate(setting.createdAt)}</span>
                       </div>
-                    ) : (
-                      <div className="mt-3">
-                        <p className="text-sm text-gray-300 truncate">
-                          {setting.channelType === 'TELEGRAM' ? (
-                            <>
-                              <span className="text-gray-500 text-xs mr-1">Chat ID</span>
-                              {setting.telegramChatId ?? '-'}
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-gray-500 text-xs mr-1">Webhook</span>
-                              {setting.slackWebhookUrl ? maskWebhookUrl(setting.slackWebhookUrl) : '-'}
-                            </>
-                          )}
-                        </p>
-                      </div>
-                    )}
 
-                    {/* 액션 버튼 */}
-                    {!isEditing && (
-                      <div className="mt-4 flex gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => handleEditStart(setting)}
-                          className="bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-medium rounded-lg px-3 py-1.5 transition-colors"
-                        >
-                          수정
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleTest(setting.id)}
-                          disabled={testingId === setting.id}
-                          className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg px-3 py-1.5 transition-colors"
-                        >
-                          {testingId === setting.id ? '발송 중...' : '테스트'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(setting.id)}
-                          disabled={removingId === setting.id}
-                          className="bg-red-600 hover:bg-red-500 disabled:bg-red-800 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg px-3 py-1.5 transition-colors"
-                        >
-                          {removingId === setting.id ? '삭제 중...' : '삭제'}
-                        </button>
-                      </div>
-                    )}
+                      {isEditing ? (
+                        <div className="mt-4 space-y-3">
+                          {setting.channelType === 'TELEGRAM' ? (
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-telegram-${setting.id}`}>Chat ID</Label>
+                              <Input
+                                id={`edit-telegram-${setting.id}`}
+                                type="text"
+                                value={editState.telegramChatId}
+                                onChange={(e) => setEditState((prev) => prev ? { ...prev, telegramChatId: e.target.value } : prev)}
+                              />
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-slack-${setting.id}`}>Webhook URL</Label>
+                              <Input
+                                id={`edit-slack-${setting.id}`}
+                                type="url"
+                                value={editState.slackWebhookUrl}
+                                onChange={(e) => setEditState((prev) => prev ? { ...prev, slackWebhookUrl: e.target.value } : prev)}
+                              />
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => handleEditSave(setting)} disabled={updating} className="cursor-pointer">
+                              {updating ? '저장 중...' : '저장'}
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={handleEditCancel} disabled={updating} className="cursor-pointer">
+                              취소
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3">
+                          <p className="text-sm text-muted-foreground truncate">
+                            {setting.channelType === 'TELEGRAM' ? (
+                              <>
+                                <span className="text-muted-foreground/60 text-xs mr-1">Chat ID</span>
+                                {setting.telegramChatId ?? '-'}
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-muted-foreground/60 text-xs mr-1">Webhook</span>
+                                {setting.slackWebhookUrl ? maskWebhookUrl(setting.slackWebhookUrl) : '-'}
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      )}
+
+                      {!isEditing && (
+                        <div className="mt-4 flex gap-2 flex-wrap">
+                          <Button size="sm" variant="secondary" onClick={() => handleEditStart(setting)} className="cursor-pointer">
+                            <Pencil className="size-3 mr-1" />
+                            수정
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleTest(setting.id)}
+                            disabled={testingId === setting.id}
+                            className="cursor-pointer"
+                          >
+                            <Send className="size-3 mr-1" />
+                            {testingId === setting.id ? '발송 중...' : '테스트'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleRemove(setting.id)}
+                            disabled={removingId === setting.id}
+                            className="cursor-pointer"
+                          >
+                            <Trash2 className="size-3 mr-1" />
+                            {removingId === setting.id ? '삭제 중...' : '삭제'}
+                          </Button>
+                        </div>
+                      )}
+                    </Card>
                   </li>
                 );
               })}
