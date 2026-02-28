@@ -26,16 +26,16 @@ const MDD_PERIODS: MddPeriod[] = ['4W', '12W', '26W', '52W'];
 
 function getMddColorClass(mdd: number | null): string {
   if (mdd === null) return 'text-muted-foreground';
-  if (mdd > -10) return 'text-emerald-400';
-  if (mdd > -20) return 'text-yellow-400';
-  return 'text-red-400';
+  if (mdd > -10) return 'text-emerald-600';
+  if (mdd > -20) return 'text-amber-600';
+  return 'text-red-600';
 }
 
 function getMddBadgeClass(mdd: number | null): string {
   if (mdd === null) return '';
-  if (mdd > -10) return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20';
-  if (mdd > -20) return 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20';
-  return 'bg-red-500/15 text-red-400 border-red-500/20';
+  if (mdd > -10) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (mdd > -20) return 'bg-amber-50 text-amber-700 border-amber-200';
+  return 'bg-red-50 text-red-700 border-red-200';
 }
 
 function isAlertRow(item: WatchlistItem): boolean {
@@ -63,10 +63,10 @@ function SummaryStats({ items }: { items: WatchlistItem[] }) {
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <Card className="glass-card p-5">
+      <Card className="light-card p-5 animate-fade-in-up stagger-1 hover:shadow-md transition-shadow duration-300">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <BarChart3 className="size-4 text-primary" />
+          <div className="p-2 rounded-lg bg-indigo-50">
+            <BarChart3 className="size-4 text-indigo-600" />
           </div>
           <div>
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">총 종목</p>
@@ -74,21 +74,21 @@ function SummaryStats({ items }: { items: WatchlistItem[] }) {
           </div>
         </div>
       </Card>
-      <Card className="glass-card p-5">
+      <Card className="light-card p-5 animate-fade-in-up stagger-2 hover:shadow-md transition-shadow duration-300">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-red-500/10">
-            <AlertTriangle className="size-4 text-red-400" />
+          <div className="p-2 rounded-lg bg-red-50">
+            <AlertTriangle className="size-4 text-red-500" />
           </div>
           <div>
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">경고 종목</p>
-            <p className="text-2xl font-bold text-red-400 mt-0.5">{alertCount}</p>
+            <p className="text-2xl font-bold text-red-600 mt-0.5">{alertCount}</p>
           </div>
         </div>
       </Card>
-      <Card className="glass-card p-5">
+      <Card className="light-card p-5 animate-fade-in-up stagger-3 hover:shadow-md transition-shadow duration-300">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-yellow-500/10">
-            <TrendingDown className="size-4 text-yellow-400" />
+          <div className="p-2 rounded-lg bg-amber-50">
+            <TrendingDown className="size-4 text-amber-500" />
           </div>
           <div>
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">평균 MDD</p>
@@ -98,10 +98,10 @@ function SummaryStats({ items }: { items: WatchlistItem[] }) {
           </div>
         </div>
       </Card>
-      <Card className="glass-card p-5">
+      <Card className="light-card p-5 animate-fade-in-up stagger-4 hover:shadow-md transition-shadow duration-300">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-emerald-500/10">
-            <Target className="size-4 text-emerald-400" />
+          <div className="p-2 rounded-lg bg-emerald-50">
+            <Target className="size-4 text-emerald-500" />
           </div>
           <div>
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">최대 낙폭</p>
@@ -332,9 +332,9 @@ export default function DashboardPage() {
   };
 
   return (
-    <div>
+    <div className="animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 animate-fade-in-up">
         <div>
           <h1 className="text-2xl font-bold text-foreground">워치리스트</h1>
           <p className="text-sm text-muted-foreground mt-1">MDD 임계값 초과 시 알림을 받을 종목을 관리합니다.</p>
@@ -351,12 +351,12 @@ export default function DashboardPage() {
           <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : error ? (
-        <Card className="glass-card p-6 text-center">
+        <Card className="light-card p-6 text-center animate-scale-in">
           <p className="text-destructive mb-3">{error}</p>
           <Button variant="secondary" onClick={fetchItems} className="cursor-pointer">다시 시도</Button>
         </Card>
       ) : items.length === 0 ? (
-        <Card className="glass-card p-12 text-center">
+        <Card className="light-card p-12 text-center animate-scale-in">
           <p className="text-muted-foreground mb-2">등록된 종목이 없습니다.</p>
           <p className="text-sm text-muted-foreground/60">상단의 종목 추가 버튼을 클릭하여 모니터링할 종목을 추가하세요.</p>
         </Card>
@@ -364,11 +364,11 @@ export default function DashboardPage() {
         <>
           <SummaryStats items={items} />
 
-          <Card className="glass-card overflow-hidden py-0">
+          <Card className="light-card overflow-hidden py-0 animate-fade-in-up" style={{ animationDelay: '0.25s' }}>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-white/5 hover:bg-transparent">
+                  <TableRow className="border-border/50 hover:bg-transparent">
                     <TableHead className="px-4">종목</TableHead>
                     <TableHead className="px-4">시장</TableHead>
                     <TableHead className="px-4 text-right">현재 MDD</TableHead>
@@ -381,15 +381,16 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((item) => {
+                  {items.map((item, index) => {
                     const alert = isAlertRow(item);
                     return (
                       <TableRow
                         key={item.id}
                         className={cn(
-                          'border-white/5 transition-colors',
-                          alert && 'bg-red-500/5 hover:bg-red-500/10',
+                          'border-border/50 transition-colors',
+                          alert && 'bg-red-50 hover:bg-red-100/80',
                         )}
+                        style={{ animationDelay: `${0.3 + index * 0.03}s` }}
                       >
                         <TableCell className="px-4">
                           <div className="flex items-center gap-2">

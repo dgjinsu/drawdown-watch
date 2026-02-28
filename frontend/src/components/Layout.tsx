@@ -15,21 +15,21 @@ export default function Layout() {
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
-      'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+      'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
       isActive
-        ? 'bg-primary/20 text-white glow-border-indigo'
+        ? 'bg-primary/10 text-primary glow-border-indigo'
         : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
     );
 
   return (
-    <div className="min-h-screen glass-gradient-bg text-foreground relative overflow-hidden">
-      <div className="gradient-orb gradient-orb-indigo w-125 h-125 -top-48 -left-48 fixed" />
-      <div className="gradient-orb gradient-orb-violet w-100 h-100 -bottom-32 -right-32 fixed" />
+    <div className="min-h-screen light-gradient-bg text-foreground relative overflow-hidden">
+      <div className="gradient-orb gradient-orb-indigo w-125 h-125 -top-48 -left-48 fixed animate-float" />
+      <div className="gradient-orb gradient-orb-violet w-100 h-100 -bottom-32 -right-32 fixed animate-float" style={{ animationDelay: '3s' }} />
 
-      <nav className="glass-nav sticky top-0 z-50">
+      <nav className="light-nav sticky top-0 z-50 animate-fade-in">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-8">
-            <span className="text-lg font-bold tracking-tight bg-linear-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+            <span className="text-lg font-bold tracking-tight bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
               MDD Watch
             </span>
             <div className="flex gap-1">

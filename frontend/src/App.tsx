@@ -25,7 +25,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <Toaster richColors position="top-right" theme="dark" />
+      <Toaster richColors position="top-right" theme="light" />
     </BrowserRouter>
   );
 }

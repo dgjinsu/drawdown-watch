@@ -144,13 +144,13 @@ export default function NotificationPage() {
   };
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-1">알림 설정</h1>
-        <p className="text-muted-foreground text-sm mb-8">Telegram 또는 Slack으로 MDD 알림을 받으세요.</p>
+        <h1 className="text-2xl font-bold text-foreground mb-1 animate-fade-in-up">알림 설정</h1>
+        <p className="text-muted-foreground text-sm mb-8 animate-fade-in-up stagger-1">Telegram 또는 Slack으로 MDD 알림을 받으세요.</p>
 
         {/* 추가 폼 */}
-        <Card className="glass-card p-6 mb-6">
+        <Card className="light-card p-6 mb-6 animate-fade-in-up stagger-2">
           <h2 className="text-base font-semibold text-foreground mb-4">알림 채널 추가</h2>
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="space-y-2">
@@ -160,7 +160,7 @@ export default function NotificationPage() {
                   type="button"
                   variant={addChannelType === 'TELEGRAM' ? 'default' : 'secondary'}
                   onClick={() => setAddChannelType('TELEGRAM')}
-                  className={cn('cursor-pointer', addChannelType === 'TELEGRAM' && 'bg-blue-600 hover:bg-blue-500')}
+                  className={cn('cursor-pointer transition-all duration-200', addChannelType === 'TELEGRAM' && 'bg-blue-600 hover:bg-blue-500')}
                 >
                   Telegram
                 </Button>
@@ -168,7 +168,7 @@ export default function NotificationPage() {
                   type="button"
                   variant={addChannelType === 'SLACK' ? 'default' : 'secondary'}
                   onClick={() => setAddChannelType('SLACK')}
-                  className={cn('cursor-pointer', addChannelType === 'SLACK' && 'bg-violet-600 hover:bg-violet-500')}
+                  className={cn('cursor-pointer transition-all duration-200', addChannelType === 'SLACK' && 'bg-violet-600 hover:bg-violet-500')}
                 >
                   Slack
                 </Button>
@@ -210,7 +210,7 @@ export default function NotificationPage() {
 
         {/* 목록 */}
         <div>
-          <h2 className="text-base font-semibold text-foreground mb-3">등록된 알림 채널</h2>
+          <h2 className="text-base font-semibold text-foreground mb-3 animate-fade-in-up stagger-3">등록된 알림 채널</h2>
 
           {loading && (
             <div className="flex items-center justify-center py-12">
@@ -219,32 +219,32 @@ export default function NotificationPage() {
           )}
 
           {!loading && error && (
-            <Card className="glass-card p-4">
+            <Card className="light-card p-4 animate-scale-in">
               <p className="text-destructive text-sm">{error}</p>
             </Card>
           )}
 
           {!loading && !error && settings.length === 0 && (
-            <Card className="glass-card p-8 text-center">
+            <Card className="light-card p-8 text-center animate-scale-in">
               <p className="text-muted-foreground text-sm">등록된 알림 채널이 없습니다. 위에서 채널을 추가해보세요.</p>
             </Card>
           )}
 
           {!loading && !error && settings.length > 0 && (
             <ul className="space-y-3">
-              {settings.map((setting) => {
+              {settings.map((setting, index) => {
                 const isEditing = editState?.id === setting.id;
                 return (
-                  <li key={setting.id}>
-                    <Card className="glass-card p-5">
+                  <li key={setting.id} className="animate-fade-in-up" style={{ animationDelay: `${0.2 + index * 0.05}s` }}>
+                    <Card className="light-card p-5 hover:shadow-md transition-shadow duration-300">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2 min-w-0">
                           <Badge
                             variant="outline"
                             className={cn(
                               setting.channelType === 'TELEGRAM'
-                                ? 'bg-blue-500/15 text-blue-400 border-blue-500/20'
-                                : 'bg-violet-500/15 text-violet-400 border-violet-500/20',
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-violet-50 text-violet-700 border-violet-200',
                             )}
                           >
                             {setting.channelType === 'TELEGRAM' ? 'Telegram' : 'Slack'}
@@ -253,7 +253,7 @@ export default function NotificationPage() {
                             variant="outline"
                             className={cn(
                               setting.enabled
-                                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : 'bg-secondary text-muted-foreground',
                             )}
                           >

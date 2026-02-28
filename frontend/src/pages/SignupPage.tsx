@@ -53,13 +53,13 @@ export default function SignupPage() {
   const displayError = validationError || error;
 
   return (
-    <div className="min-h-screen glass-gradient-bg flex items-center justify-center px-4 relative overflow-hidden">
-      <div className="gradient-orb gradient-orb-indigo w-150 h-150 -top-64 -right-64 absolute" />
-      <div className="gradient-orb gradient-orb-violet w-125 h-125 -bottom-48 -left-48 absolute" />
+    <div className="min-h-screen light-gradient-bg flex items-center justify-center px-4 relative overflow-hidden">
+      <div className="gradient-orb gradient-orb-indigo w-150 h-150 -top-64 -right-64 absolute animate-float" />
+      <div className="gradient-orb gradient-orb-violet w-125 h-125 -bottom-48 -left-48 absolute animate-float" style={{ animationDelay: '3s' }} />
 
-      <Card className="w-full max-w-md glass-card-elevated relative z-10 py-8">
+      <Card className="w-full max-w-md light-card-elevated relative z-10 py-8 animate-scale-in">
         <CardHeader className="text-center pb-2">
-          <h1 className="text-2xl font-bold bg-linear-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
             MDD Watch
           </h1>
           <p className="text-muted-foreground text-sm mt-1">새 계정을 만드세요</p>
@@ -67,7 +67,7 @@ export default function SignupPage() {
 
         <CardContent>
           {displayError && (
-            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg animate-fade-in">
               <p className="text-destructive text-sm">{displayError}</p>
             </div>
           )}
