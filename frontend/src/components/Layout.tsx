@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Bell, LogOut } from 'lucide-react';
+import { LayoutDashboard, Bell, History, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Layout() {
@@ -40,6 +40,10 @@ export default function Layout() {
               <NavLink to="/notifications" className={linkClass}>
                 <Bell className="size-4" />
                 Notifications
+              </NavLink>
+              <NavLink to="/notification-history" className={linkClass}>
+                <History className="size-4" />
+                알림 이력
               </NavLink>
             </div>
           </div>

@@ -61,6 +61,36 @@ export interface NotificationSetting {
   createdAt: string;
 }
 
+// Notification Log
+export interface NotificationLog {
+  id: number;
+  channelType: ChannelType;
+  stockSymbol: string;
+  stockName: string;
+  mddValue: number;
+  threshold: number;
+  status: 'SENT' | 'FAILED' | 'SKIPPED';
+  message: string;
+  sentAt: string;
+}
+
+export interface NotificationLogSearchParams {
+  status?: string;
+  channelType?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
 // Error
 export interface ErrorResponse {
   code: string;

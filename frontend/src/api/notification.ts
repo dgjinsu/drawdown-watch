@@ -1,5 +1,5 @@
 import client from './client';
-import type { NotificationSettingRequest, NotificationSetting } from '@/types';
+import type { NotificationSettingRequest, NotificationSetting, NotificationLogSearchParams, NotificationLog, PageResponse } from '@/types';
 
 export const notificationApi = {
   getAll: () =>
@@ -16,4 +16,7 @@ export const notificationApi = {
 
   test: (id: number) =>
     client.post<{ result: string }>(`/notification-settings/${id}/test`),
+
+  getLogs: (params: NotificationLogSearchParams) =>
+    client.get<PageResponse<NotificationLog>>('/notification-logs', { params }),
 };

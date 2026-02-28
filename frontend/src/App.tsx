@@ -6,6 +6,7 @@ import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import DashboardPage from '@/pages/DashboardPage';
 import NotificationPage from '@/pages/NotificationPage';
+import NotificationHistoryPage from '@/pages/NotificationHistoryPage';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/notifications" element={<NotificationPage />} />
+          <Route path="/notification-history" element={<NotificationHistoryPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

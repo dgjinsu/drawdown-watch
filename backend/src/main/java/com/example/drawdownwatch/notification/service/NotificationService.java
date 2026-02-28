@@ -1,6 +1,7 @@
 package com.example.drawdownwatch.notification.service;
 
 import com.example.drawdownwatch.mdd.entity.MddSnapshot;
+import com.example.drawdownwatch.notification.dto.NotificationLogResponse;
 import com.example.drawdownwatch.notification.entity.NotificationLog;
 import com.example.drawdownwatch.notification.entity.NotificationSetting;
 import com.example.drawdownwatch.notification.repository.NotificationLogRepository;
@@ -9,9 +10,12 @@ import com.example.drawdownwatch.watchlist.entity.WatchlistItem;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -81,6 +85,37 @@ public class NotificationService {
                 snapshot.getPeakPrice(),
                 snapshot.getCurrentPrice(),
                 snapshot.getCalcDate()
+        );
+    }
+
+    public Page<NotificationLogResponse> getNotificationLogs(
+            Long userId, String status, String channelType,
+            LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        LocalDateTime startDateTime = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = endDate != null ? endDate.plusDays(1).atStartOfDay() : null;
+
+        return notificationLogRepository
+                .findByUserIdWithFilters(userId, status, channelType, startDateTime, endDateTime, pageable)
+                .map(this::toLogResponse);
+    }
+
+    private NotificationLogResponse toLogResponse(NotificationLog log) {
+        String stockSymbol = null;
+        String stockName = null;
+        if (log.getWatchlistItem() != null && log.getWatchlistItem().getStock() != null) {
+            stockSymbol = log.getWatchlistItem().getStock().getSymbol();
+            stockName = log.getWatchlistItem().getStock().getName();
+        }
+        return new NotificationLogResponse(
+                log.getId(),
+                log.getChannelType(),
+                stockSymbol,
+                stockName,
+                log.getMddValue(),
+                log.getThreshold(),
+                log.getStatus(),
+                log.getMessage(),
+                log.getSentAt()
         );
     }
 
