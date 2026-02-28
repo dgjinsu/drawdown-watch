@@ -18,6 +18,7 @@ public class RestClientConfig {
         factory.setReadTimeout(timeout);
         return RestClient.builder()
                 .baseUrl(baseUrl)
+                .defaultHeader("User-Agent", "Mozilla/5.0")
                 .requestFactory(factory)
                 .build();
     }

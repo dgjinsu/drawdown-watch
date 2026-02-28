@@ -9,8 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -84,6 +86,7 @@ public class YahooFinanceClient {
 
     private YahooChartResponse fetchWithRetry(String symbol, long period1, long period2) {
         int attempt = 0;
+        boolean rateLimited = false;
         while (attempt < maxRetries) {
             try {
                 return restClient.get()
@@ -91,6 +94,30 @@ public class YahooFinanceClient {
                                 symbol, period1, period2)
                         .retrieve()
                         .body(YahooChartResponse.class);
+            } catch (RestClientResponseException e) {
+                attempt++;
+                HttpStatusCode status = e.getStatusCode();
+                log.warn("Yahoo Finance API 호출 실패 (symbol={}, attempt={}/{}, status={}): {}",
+                        symbol, attempt, maxRetries, status.value(), e.getMessage());
+
+                if (status.value() == 404) {
+                    return null;
+                }
+                if (status.value() == 429) {
+                    rateLimited = true;
+                }
+                if (attempt < maxRetries) {
+                    long backoffMs = (long) Math.pow(2, attempt - 1) * 1000L;
+                    if (rateLimited) {
+                        backoffMs = Math.max(backoffMs, 3000L);
+                    }
+                    try {
+                        Thread.sleep(backoffMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
             } catch (RestClientException e) {
                 attempt++;
                 log.warn("Yahoo Finance API 호출 실패 (symbol={}, attempt={}/{}): {}",
@@ -107,6 +134,9 @@ public class YahooFinanceClient {
             }
         }
         log.error("Yahoo Finance API 최대 재시도 초과 (symbol={})", symbol);
+        if (rateLimited) {
+            throw new BusinessException(ErrorCode.PRICE_FETCH_FAILED);
+        }
         return null;
     }
 
