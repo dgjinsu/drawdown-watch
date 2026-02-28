@@ -1,0 +1,344 @@
+package com.example.drawdownwatch.notification.service;
+
+import com.example.drawdownwatch.mdd.entity.MddSnapshot;
+import com.example.drawdownwatch.notification.entity.NotificationLog;
+import com.example.drawdownwatch.notification.entity.NotificationSetting;
+import com.example.drawdownwatch.notification.repository.NotificationLogRepository;
+import com.example.drawdownwatch.notification.repository.NotificationSettingRepository;
+import com.example.drawdownwatch.stock.entity.Stock;
+import com.example.drawdownwatch.user.entity.User;
+import com.example.drawdownwatch.watchlist.entity.WatchlistItem;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+@ExtendWith(MockitoExtension.class)
+class NotificationServiceTest {
+
+    @Mock
+    private NotificationSettingRepository notificationSettingRepository;
+
+    @Mock
+    private NotificationLogRepository notificationLogRepository;
+
+    @Mock
+    private TelegramSender telegramSender;
+
+    @Mock
+    private SlackSender slackSender;
+
+    @InjectMocks
+    private NotificationService notificationService;
+
+    // -----------------------------------------------------------------------
+    // 픽스처 헬퍼
+    // -----------------------------------------------------------------------
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(notificationService, "cooldownHours", 24);
+    }
+
+    private User buildUser(Long id) {
+        return User.builder()
+                .id(id)
+                .email("user@example.com")
+                .password("encoded")
+                .build();
+    }
+
+    private Stock buildStock(Long id, String symbol) {
+        return Stock.builder()
+                .id(id)
+                .symbol(symbol)
+                .name("Test Stock")
+                .market("US")
+                .build();
+    }
+
+    private WatchlistItem buildWatchlistItem(Long id, User user, Stock stock) {
+        return WatchlistItem.builder()
+                .id(id)
+                .user(user)
+                .stock(stock)
+                .threshold(BigDecimal.valueOf(-20.00))
+                .mddPeriod("52W")
+                .build();
+    }
+
+    private MddSnapshot buildSnapshot(WatchlistItem item, BigDecimal mddValue) {
+        return MddSnapshot.builder()
+                .id(1L)
+                .watchlistItem(item)
+                .calcDate(LocalDate.now())
+                .peakPrice(BigDecimal.valueOf(100_000))
+                .currentPrice(BigDecimal.valueOf(80_000))
+                .mddValue(mddValue)
+                .build();
+    }
+
+    private NotificationSetting buildTelegramSetting(User user) {
+        return NotificationSetting.builder()
+                .id(1L)
+                .user(user)
+                .channelType("TELEGRAM")
+                .telegramChatId("chat-123")
+                .enabled(true)
+                .build();
+    }
+
+    private NotificationSetting buildSlackSetting(User user) {
+        return NotificationSetting.builder()
+                .id(2L)
+                .user(user)
+                .channelType("SLACK")
+                .slackWebhookUrl("https://hooks.slack.com/test")
+                .enabled(true)
+                .build();
+    }
+
+    // -----------------------------------------------------------------------
+    // sendAlertIfNeeded 테스트
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Telegram 알림 발송 성공: SENT 로그 저장")
+    void sendAlertIfNeeded_텔레그램채널_발송성공후SENT로그저장() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting telegramSetting = buildTelegramSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(telegramSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        verify(telegramSender).send(eq("chat-123"), anyString());
+        verify(slackSender, never()).send(anyString(), anyString());
+
+        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
+        verify(notificationLogRepository).save(logCaptor.capture());
+        assertThat(logCaptor.getValue().getStatus()).isEqualTo("SENT");
+        assertThat(logCaptor.getValue().getChannelType()).isEqualTo("TELEGRAM");
+    }
+
+    @Test
+    @DisplayName("Slack 알림 발송 성공: SENT 로그 저장")
+    void sendAlertIfNeeded_슬랙채널_발송성공후SENT로그저장() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting slackSetting = buildSlackSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(slackSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        verify(slackSender).send(eq("https://hooks.slack.com/test"), anyString());
+        verify(telegramSender, never()).send(anyString(), anyString());
+
+        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
+        verify(notificationLogRepository).save(logCaptor.capture());
+        assertThat(logCaptor.getValue().getStatus()).isEqualTo("SENT");
+        assertThat(logCaptor.getValue().getChannelType()).isEqualTo("SLACK");
+    }
+
+    @Test
+    @DisplayName("24시간 쿨다운 내 중복 발송 시도: SKIPPED 로그 저장 후 발송 안 됨")
+    void sendAlertIfNeeded_쿨다운적용_SKIPPED로그저장() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting telegramSetting = buildTelegramSetting(user);
+
+        NotificationLog recentLog = NotificationLog.builder()
+                .id(10L)
+                .user(user)
+                .watchlistItem(item)
+                .channelType("TELEGRAM")
+                .mddValue(new BigDecimal("-25.0000"))
+                .threshold(BigDecimal.valueOf(-20.00))
+                .status("SENT")
+                .message("이전 알림")
+                .build();
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(telegramSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.of(recentLog));
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        verify(telegramSender, never()).send(anyString(), anyString());
+        verify(slackSender, never()).send(anyString(), anyString());
+
+        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
+        verify(notificationLogRepository).save(logCaptor.capture());
+        assertThat(logCaptor.getValue().getStatus()).isEqualTo("SKIPPED");
+    }
+
+    @Test
+    @DisplayName("알림 채널 미설정: 발송 안 됨, 로그 저장 안 됨")
+    void sendAlertIfNeeded_채널미설정_발송안됨() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(Collections.emptyList());
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        verify(telegramSender, never()).send(anyString(), anyString());
+        verify(slackSender, never()).send(anyString(), anyString());
+        verify(notificationLogRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Telegram 발송 실패: FAILED 로그 저장")
+    void sendAlertIfNeeded_텔레그램발송실패_FAILED로그저장() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting telegramSetting = buildTelegramSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(telegramSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("Telegram API error"))
+                .when(telegramSender).send(anyString(), anyString());
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
+        verify(notificationLogRepository).save(logCaptor.capture());
+        assertThat(logCaptor.getValue().getStatus()).isEqualTo("FAILED");
+        assertThat(logCaptor.getValue().getChannelType()).isEqualTo("TELEGRAM");
+        assertThat(logCaptor.getValue().getMessage()).contains("Telegram API error");
+    }
+
+    @Test
+    @DisplayName("Slack 발송 실패: FAILED 로그 저장")
+    void sendAlertIfNeeded_슬랙발송실패_FAILED로그저장() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting slackSetting = buildSlackSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(slackSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("Slack webhook error"))
+                .when(slackSender).send(anyString(), anyString());
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
+        verify(notificationLogRepository).save(logCaptor.capture());
+        assertThat(logCaptor.getValue().getStatus()).isEqualTo("FAILED");
+        assertThat(logCaptor.getValue().getChannelType()).isEqualTo("SLACK");
+        assertThat(logCaptor.getValue().getMessage()).contains("Slack webhook error");
+    }
+
+    @Test
+    @DisplayName("Telegram + Slack 동시 설정: 두 채널 모두 발송 시도")
+    void sendAlertIfNeeded_멀티채널_모두발송() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting telegramSetting = buildTelegramSetting(user);
+        NotificationSetting slackSetting = buildSlackSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(telegramSetting, slackSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        verify(telegramSender).send(eq("chat-123"), anyString());
+        verify(slackSender).send(eq("https://hooks.slack.com/test"), anyString());
+    }
+}
