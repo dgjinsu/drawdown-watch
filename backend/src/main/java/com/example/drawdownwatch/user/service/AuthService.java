@@ -6,16 +6,13 @@ import com.example.drawdownwatch.user.dto.LoginRequest;
 import com.example.drawdownwatch.user.dto.RefreshTokenRequest;
 import com.example.drawdownwatch.user.dto.SignupRequest;
 import com.example.drawdownwatch.user.dto.TokenResponse;
-import com.example.drawdownwatch.user.entity.RefreshToken;
 import com.example.drawdownwatch.user.entity.User;
-import com.example.drawdownwatch.user.repository.RefreshTokenRepository;
+import com.example.drawdownwatch.user.repository.RefreshTokenStore;
 import com.example.drawdownwatch.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +20,7 @@ import java.time.LocalDateTime;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenStore refreshTokenStore;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
 
@@ -52,30 +49,25 @@ public class AuthService {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        refreshTokenRepository.deleteAllByUserId(user.getId());
+        refreshTokenStore.deleteAllByUserId(user.getId());
 
         return issueTokens(user);
     }
 
-    @Transactional
     public TokenResponse refresh(RefreshTokenRequest request) {
-        RefreshToken refreshToken = refreshTokenRepository.findByToken(request.refreshToken())
+        Long userId = refreshTokenStore.findUserIdByToken(request.refreshToken())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
 
-        if (refreshToken.isExpired()) {
-            refreshTokenRepository.delete(refreshToken);
-            throw new BusinessException(ErrorCode.EXPIRED_TOKEN);
-        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
 
-        User user = refreshToken.getUser();
-        refreshTokenRepository.delete(refreshToken);
+        refreshTokenStore.delete(request.refreshToken());
 
         return issueTokens(user);
     }
 
-    @Transactional
     public void logout(Long userId) {
-        refreshTokenRepository.deleteAllByUserId(userId);
+        refreshTokenStore.deleteAllByUserId(userId);
     }
 
     private TokenResponse issueTokens(User user) {
@@ -83,15 +75,7 @@ public class AuthService {
         String rawRefreshToken = jwtTokenProvider.generateRefreshToken();
         long refreshTokenExpiry = jwtTokenProvider.getRefreshTokenExpiry();
 
-        LocalDateTime expiresAt = LocalDateTime.now()
-                .plusSeconds(refreshTokenExpiry / 1000);
-
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .token(rawRefreshToken)
-                .expiresAt(expiresAt)
-                .build();
-        refreshTokenRepository.save(refreshToken);
+        refreshTokenStore.save(rawRefreshToken, user.getId(), refreshTokenExpiry);
 
         return new TokenResponse(accessToken, rawRefreshToken, jwtTokenProvider.getAccessTokenExpiry() / 1000);
     }

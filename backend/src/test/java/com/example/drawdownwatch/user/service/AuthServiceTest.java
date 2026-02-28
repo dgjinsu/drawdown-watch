@@ -6,25 +6,23 @@ import com.example.drawdownwatch.user.dto.LoginRequest;
 import com.example.drawdownwatch.user.dto.RefreshTokenRequest;
 import com.example.drawdownwatch.user.dto.SignupRequest;
 import com.example.drawdownwatch.user.dto.TokenResponse;
-import com.example.drawdownwatch.user.entity.RefreshToken;
 import com.example.drawdownwatch.user.entity.User;
-import com.example.drawdownwatch.user.repository.RefreshTokenRepository;
+import com.example.drawdownwatch.user.repository.RefreshTokenStore;
 import com.example.drawdownwatch.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -38,7 +36,7 @@ class AuthServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private RefreshTokenRepository refreshTokenRepository;
+    private RefreshTokenStore refreshTokenStore;
 
     @Mock
     private JwtTokenProvider jwtTokenProvider;
@@ -61,25 +59,13 @@ class AuthServiceTest {
                 .build();
     }
 
-    private RefreshToken buildRefreshToken(User user, String token, LocalDateTime expiresAt) {
-        return RefreshToken.builder()
-                .id(1L)
-                .user(user)
-                .token(token)
-                .expiresAt(expiresAt)
-                .build();
-    }
-
     private void stubJwtProvider() {
-        // Long.class 매처는 null을 매칭하지 못하므로 any()를 사용
         given(jwtTokenProvider.generateAccessToken(any(), anyString()))
                 .willReturn("access-token-value");
         given(jwtTokenProvider.generateRefreshToken())
                 .willReturn("refresh-token-value");
         given(jwtTokenProvider.getRefreshTokenExpiry()).willReturn(604800000L);
         given(jwtTokenProvider.getAccessTokenExpiry()).willReturn(1800000L);
-        given(refreshTokenRepository.save(any(RefreshToken.class)))
-                .willAnswer(inv -> inv.getArgument(0));
     }
 
     // -----------------------------------------------------------------------
@@ -109,7 +95,7 @@ class AuthServiceTest {
         assertThat(result.expiresIn()).isEqualTo(1800L);
 
         verify(userRepository).save(any(User.class));
-        verify(refreshTokenRepository).save(any(RefreshToken.class));
+        verify(refreshTokenStore).save(eq("refresh-token-value"), any(), eq(604800000L));
     }
 
     @Test
@@ -151,8 +137,8 @@ class AuthServiceTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.accessToken()).isEqualTo("access-token-value");
-        verify(refreshTokenRepository).deleteAllByUserId(1L);
-        verify(refreshTokenRepository).save(any(RefreshToken.class));
+        verify(refreshTokenStore).deleteAllByUserId(1L);
+        verify(refreshTokenStore).save(eq("refresh-token-value"), eq(1L), eq(604800000L));
     }
 
     @Test
@@ -189,7 +175,7 @@ class AuthServiceTest {
                     assertThat(be.getErrorCode()).isEqualTo(ErrorCode.INVALID_CREDENTIALS);
                 });
 
-        verify(refreshTokenRepository, never()).deleteAllByUserId(any());
+        verify(refreshTokenStore, never()).deleteAllByUserId(any());
     }
 
     // -----------------------------------------------------------------------
@@ -202,11 +188,10 @@ class AuthServiceTest {
         // Given
         RefreshTokenRequest request = new RefreshTokenRequest("valid-refresh-token");
         User user = buildUser(1L, "user@example.com", "encoded-password");
-        RefreshToken refreshToken = buildRefreshToken(user, "valid-refresh-token",
-                LocalDateTime.now().plusDays(7));
 
-        given(refreshTokenRepository.findByToken("valid-refresh-token"))
-                .willReturn(Optional.of(refreshToken));
+        given(refreshTokenStore.findUserIdByToken("valid-refresh-token"))
+                .willReturn(Optional.of(1L));
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
         stubJwtProvider();
 
         // When
@@ -215,8 +200,8 @@ class AuthServiceTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.accessToken()).isEqualTo("access-token-value");
-        verify(refreshTokenRepository).delete(refreshToken);
-        verify(refreshTokenRepository).save(any(RefreshToken.class));
+        verify(refreshTokenStore).delete("valid-refresh-token");
+        verify(refreshTokenStore).save(eq("refresh-token-value"), eq(1L), eq(604800000L));
     }
 
     @Test
@@ -224,7 +209,7 @@ class AuthServiceTest {
     void refresh_존재하지않는토큰_INVALID_TOKEN예외() {
         // Given
         RefreshTokenRequest request = new RefreshTokenRequest("nonexistent-token");
-        given(refreshTokenRepository.findByToken("nonexistent-token")).willReturn(Optional.empty());
+        given(refreshTokenStore.findUserIdByToken("nonexistent-token")).willReturn(Optional.empty());
 
         // When / Then
         assertThatThrownBy(() -> authService.refresh(request))
@@ -236,27 +221,21 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("토큰 갱신 실패 - 만료된 토큰: EXPIRED_TOKEN 예외 발생 후 토큰 삭제")
-    void refresh_만료된토큰_EXPIRED_TOKEN예외() {
-        // Given
+    @DisplayName("토큰 갱신 실패 - 만료된 토큰(Redis TTL): INVALID_TOKEN 예외 발생")
+    void refresh_만료된토큰_INVALID_TOKEN예외() {
+        // Redis TTL이 만료되면 findUserIdByToken이 empty 반환
         RefreshTokenRequest request = new RefreshTokenRequest("expired-refresh-token");
-        User user = buildUser(1L, "user@example.com", "encoded-password");
-        RefreshToken expiredToken = buildRefreshToken(user, "expired-refresh-token",
-                LocalDateTime.now().minusDays(1));
-
-        given(refreshTokenRepository.findByToken("expired-refresh-token"))
-                .willReturn(Optional.of(expiredToken));
+        given(refreshTokenStore.findUserIdByToken("expired-refresh-token")).willReturn(Optional.empty());
 
         // When / Then
         assertThatThrownBy(() -> authService.refresh(request))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> {
                     BusinessException be = (BusinessException) ex;
-                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.EXPIRED_TOKEN);
+                    assertThat(be.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN);
                 });
 
-        verify(refreshTokenRepository).delete(expiredToken);
-        verify(refreshTokenRepository, never()).save(any());
+        verify(refreshTokenStore, never()).delete(anyString());
     }
 
     // -----------------------------------------------------------------------
@@ -273,6 +252,6 @@ class AuthServiceTest {
         authService.logout(userId);
 
         // Then
-        verify(refreshTokenRepository).deleteAllByUserId(1L);
+        verify(refreshTokenStore).deleteAllByUserId(1L);
     }
 }
