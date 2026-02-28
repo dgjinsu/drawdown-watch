@@ -98,6 +98,8 @@ export default function NotificationHistoryPage() {
                 <SelectItem value="ALL">전체 채널</SelectItem>
                 <SelectItem value="TELEGRAM">Telegram</SelectItem>
                 <SelectItem value="SLACK">Slack</SelectItem>
+                <SelectItem value="EMAIL">Email</SelectItem>
+                <SelectItem value="DISCORD">Discord</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -181,12 +183,16 @@ export default function NotificationHistoryPage() {
                         <Badge
                           variant="outline"
                           className={cn(
-                            log.channelType === 'TELEGRAM'
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
-                              : 'bg-violet-50 text-violet-700 border-violet-200',
+                            log.channelType === 'TELEGRAM' && 'bg-blue-50 text-blue-700 border-blue-200',
+                            log.channelType === 'SLACK' && 'bg-violet-50 text-violet-700 border-violet-200',
+                            log.channelType === 'EMAIL' && 'bg-amber-50 text-amber-700 border-amber-200',
+                            log.channelType === 'DISCORD' && 'bg-indigo-50 text-indigo-700 border-indigo-200',
                           )}
                         >
-                          {log.channelType === 'TELEGRAM' ? 'Telegram' : 'Slack'}
+                          {log.channelType === 'TELEGRAM' && 'Telegram'}
+                          {log.channelType === 'SLACK' && 'Slack'}
+                          {log.channelType === 'EMAIL' && 'Email'}
+                          {log.channelType === 'DISCORD' && 'Discord'}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-destructive">

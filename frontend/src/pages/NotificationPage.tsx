@@ -14,6 +14,7 @@ interface EditState {
   id: number;
   telegramChatId: string;
   slackWebhookUrl: string;
+  discordWebhookUrl: string;
 }
 
 function maskWebhookUrl(url: string): string {
@@ -29,6 +30,32 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function getChannelBadgeClass(channelType: ChannelType): string {
+  switch (channelType) {
+    case 'TELEGRAM':
+      return 'bg-blue-50 text-blue-700 border-blue-200';
+    case 'SLACK':
+      return 'bg-violet-50 text-violet-700 border-violet-200';
+    case 'EMAIL':
+      return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'DISCORD':
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+  }
+}
+
+function getChannelLabel(channelType: ChannelType): string {
+  switch (channelType) {
+    case 'TELEGRAM':
+      return 'Telegram';
+    case 'SLACK':
+      return 'Slack';
+    case 'EMAIL':
+      return 'Email';
+    case 'DISCORD':
+      return 'Discord';
+  }
+}
+
 export default function NotificationPage() {
   const [settings, setSettings] = useState<NotificationSetting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +64,7 @@ export default function NotificationPage() {
   const [addChannelType, setAddChannelType] = useState<ChannelType>('TELEGRAM');
   const [addTelegramChatId, setAddTelegramChatId] = useState('');
   const [addSlackWebhookUrl, setAddSlackWebhookUrl] = useState('');
+  const [addDiscordWebhookUrl, setAddDiscordWebhookUrl] = useState('');
   const [adding, setAdding] = useState(false);
 
   const [editState, setEditState] = useState<EditState | null>(null);
@@ -67,16 +95,21 @@ export default function NotificationPage() {
     if (addChannelType === 'TELEGRAM') {
       if (!addTelegramChatId.trim()) return;
       data.telegramChatId = addTelegramChatId.trim();
-    } else {
+    } else if (addChannelType === 'SLACK') {
       if (!addSlackWebhookUrl.trim()) return;
       data.slackWebhookUrl = addSlackWebhookUrl.trim();
+    } else if (addChannelType === 'DISCORD') {
+      if (!addDiscordWebhookUrl.trim()) return;
+      data.discordWebhookUrl = addDiscordWebhookUrl.trim();
     }
+    // EMAIL: channelType만 전송
 
     try {
       setAdding(true);
       await notificationApi.create(data);
       setAddTelegramChatId('');
       setAddSlackWebhookUrl('');
+      setAddDiscordWebhookUrl('');
       await fetchSettings();
       toast.success('알림 채널이 추가되었습니다.');
     } catch {
@@ -91,6 +124,7 @@ export default function NotificationPage() {
       id: setting.id,
       telegramChatId: setting.telegramChatId ?? '',
       slackWebhookUrl: setting.slackWebhookUrl ?? '',
+      discordWebhookUrl: setting.discordWebhookUrl ?? '',
     });
   };
 
@@ -101,8 +135,10 @@ export default function NotificationPage() {
     const data: NotificationSettingRequest = { channelType: setting.channelType };
     if (setting.channelType === 'TELEGRAM') {
       data.telegramChatId = editState.telegramChatId.trim();
-    } else {
+    } else if (setting.channelType === 'SLACK') {
       data.slackWebhookUrl = editState.slackWebhookUrl.trim();
+    } else if (setting.channelType === 'DISCORD') {
+      data.discordWebhookUrl = editState.discordWebhookUrl.trim();
     }
 
     try {
@@ -147,7 +183,7 @@ export default function NotificationPage() {
     <div className="animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-foreground mb-1 animate-fade-in-up">알림 설정</h1>
-        <p className="text-muted-foreground text-sm mb-8 animate-fade-in-up stagger-1">Telegram 또는 Slack으로 MDD 알림을 받으세요.</p>
+        <p className="text-muted-foreground text-sm mb-8 animate-fade-in-up stagger-1">Telegram, Slack, Email 또는 Discord로 MDD 알림을 받으세요.</p>
 
         {/* 추가 폼 */}
         <Card className="light-card p-6 mb-6 animate-fade-in-up stagger-2">
@@ -155,7 +191,7 @@ export default function NotificationPage() {
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="space-y-2">
               <Label>채널 유형</Label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   type="button"
                   variant={addChannelType === 'TELEGRAM' ? 'default' : 'secondary'}
@@ -172,10 +208,26 @@ export default function NotificationPage() {
                 >
                   Slack
                 </Button>
+                <Button
+                  type="button"
+                  variant={addChannelType === 'EMAIL' ? 'default' : 'secondary'}
+                  onClick={() => setAddChannelType('EMAIL')}
+                  className={cn('cursor-pointer transition-all duration-200', addChannelType === 'EMAIL' && 'bg-amber-600 hover:bg-amber-500')}
+                >
+                  Email
+                </Button>
+                <Button
+                  type="button"
+                  variant={addChannelType === 'DISCORD' ? 'default' : 'secondary'}
+                  onClick={() => setAddChannelType('DISCORD')}
+                  className={cn('cursor-pointer transition-all duration-200', addChannelType === 'DISCORD' && 'bg-indigo-600 hover:bg-indigo-500')}
+                >
+                  Discord
+                </Button>
               </div>
             </div>
 
-            {addChannelType === 'TELEGRAM' ? (
+            {addChannelType === 'TELEGRAM' && (
               <div className="space-y-2">
                 <Label htmlFor="add-telegram-chat-id">Chat ID</Label>
                 <Input
@@ -187,7 +239,9 @@ export default function NotificationPage() {
                   required
                 />
               </div>
-            ) : (
+            )}
+
+            {addChannelType === 'SLACK' && (
               <div className="space-y-2">
                 <Label htmlFor="add-slack-webhook-url">Webhook URL</Label>
                 <Input
@@ -196,6 +250,26 @@ export default function NotificationPage() {
                   value={addSlackWebhookUrl}
                   onChange={(e) => setAddSlackWebhookUrl(e.target.value)}
                   placeholder="https://hooks.slack.com/services/..."
+                  required
+                />
+              </div>
+            )}
+
+            {addChannelType === 'EMAIL' && (
+              <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+                가입 시 등록한 이메일로 알림이 발송됩니다.
+              </div>
+            )}
+
+            {addChannelType === 'DISCORD' && (
+              <div className="space-y-2">
+                <Label htmlFor="add-discord-webhook-url">Webhook URL</Label>
+                <Input
+                  id="add-discord-webhook-url"
+                  type="url"
+                  value={addDiscordWebhookUrl}
+                  onChange={(e) => setAddDiscordWebhookUrl(e.target.value)}
+                  placeholder="https://discord.com/api/webhooks/..."
                   required
                 />
               </div>
@@ -241,13 +315,9 @@ export default function NotificationPage() {
                         <div className="flex items-center gap-2 min-w-0">
                           <Badge
                             variant="outline"
-                            className={cn(
-                              setting.channelType === 'TELEGRAM'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : 'bg-violet-50 text-violet-700 border-violet-200',
-                            )}
+                            className={cn(getChannelBadgeClass(setting.channelType))}
                           >
-                            {setting.channelType === 'TELEGRAM' ? 'Telegram' : 'Slack'}
+                            {getChannelLabel(setting.channelType)}
                           </Badge>
                           <Badge
                             variant="outline"
@@ -265,7 +335,7 @@ export default function NotificationPage() {
 
                       {isEditing ? (
                         <div className="mt-4 space-y-3">
-                          {setting.channelType === 'TELEGRAM' ? (
+                          {setting.channelType === 'TELEGRAM' && (
                             <div className="space-y-2">
                               <Label htmlFor={`edit-telegram-${setting.id}`}>Chat ID</Label>
                               <Input
@@ -275,7 +345,8 @@ export default function NotificationPage() {
                                 onChange={(e) => setEditState((prev) => prev ? { ...prev, telegramChatId: e.target.value } : prev)}
                               />
                             </div>
-                          ) : (
+                          )}
+                          {setting.channelType === 'SLACK' && (
                             <div className="space-y-2">
                               <Label htmlFor={`edit-slack-${setting.id}`}>Webhook URL</Label>
                               <Input
@@ -283,6 +354,22 @@ export default function NotificationPage() {
                                 type="url"
                                 value={editState.slackWebhookUrl}
                                 onChange={(e) => setEditState((prev) => prev ? { ...prev, slackWebhookUrl: e.target.value } : prev)}
+                              />
+                            </div>
+                          )}
+                          {setting.channelType === 'EMAIL' && (
+                            <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+                              이메일은 프로필에서 변경할 수 있습니다.
+                            </div>
+                          )}
+                          {setting.channelType === 'DISCORD' && (
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-discord-${setting.id}`}>Webhook URL</Label>
+                              <Input
+                                id={`edit-discord-${setting.id}`}
+                                type="url"
+                                value={editState.discordWebhookUrl}
+                                onChange={(e) => setEditState((prev) => prev ? { ...prev, discordWebhookUrl: e.target.value } : prev)}
                               />
                             </div>
                           )}
@@ -298,15 +385,28 @@ export default function NotificationPage() {
                       ) : (
                         <div className="mt-3">
                           <p className="text-sm text-muted-foreground truncate">
-                            {setting.channelType === 'TELEGRAM' ? (
+                            {setting.channelType === 'TELEGRAM' && (
                               <>
                                 <span className="text-muted-foreground/60 text-xs mr-1">Chat ID</span>
                                 {setting.telegramChatId ?? '-'}
                               </>
-                            ) : (
+                            )}
+                            {setting.channelType === 'SLACK' && (
                               <>
                                 <span className="text-muted-foreground/60 text-xs mr-1">Webhook</span>
                                 {setting.slackWebhookUrl ? maskWebhookUrl(setting.slackWebhookUrl) : '-'}
+                              </>
+                            )}
+                            {setting.channelType === 'EMAIL' && (
+                              <>
+                                <span className="text-muted-foreground/60 text-xs mr-1">가입 이메일로 발송</span>
+                                {setting.email ?? '-'}
+                              </>
+                            )}
+                            {setting.channelType === 'DISCORD' && (
+                              <>
+                                <span className="text-muted-foreground/60 text-xs mr-1">Webhook</span>
+                                {setting.discordWebhookUrl ? maskWebhookUrl(setting.discordWebhookUrl) : '-'}
                               </>
                             )}
                           </p>

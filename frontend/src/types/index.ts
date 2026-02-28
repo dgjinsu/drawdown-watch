@@ -44,12 +44,13 @@ export interface WatchlistItem {
 }
 
 // Notification
-export type ChannelType = 'TELEGRAM' | 'SLACK';
+export type ChannelType = 'TELEGRAM' | 'SLACK' | 'EMAIL' | 'DISCORD';
 
 export interface NotificationSettingRequest {
   channelType: ChannelType;
   telegramChatId?: string;
   slackWebhookUrl?: string;
+  discordWebhookUrl?: string;
 }
 
 export interface NotificationSetting {
@@ -57,6 +58,8 @@ export interface NotificationSetting {
   channelType: ChannelType;
   telegramChatId: string | null;
   slackWebhookUrl: string | null;
+  discordWebhookUrl: string | null;
+  email: string | null;
   enabled: boolean;
   createdAt: string;
 }
