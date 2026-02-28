@@ -1,0 +1,886 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
+  "version": "3.0.0",
+  "settings": {
+    "width": 2200,
+    "height": 1800,
+    "scrollTop": 0,
+    "scrollLeft": 0,
+    "zoomLevel": 0.85,
+    "show": 431,
+    "database": 16,
+    "databaseName": "drawdown_watch",
+    "canvasType": "ERD",
+    "language": 4,
+    "tableNameCase": 8,
+    "columnNameCase": 8,
+    "bracketType": 2,
+    "relationshipDataTypeSync": true,
+    "relationshipOptimization": false,
+    "columnOrder": [1, 2, 4, 8, 16, 32, 64],
+    "maxWidthComment": -1,
+    "ignoreSaveSettings": 0
+  },
+  "doc": {
+    "tableIds": [
+      "t-users",
+      "t-stocks",
+      "t-daily-prices",
+      "t-watchlist-items",
+      "t-mdd-snapshots",
+      "t-notification-settings",
+      "t-notification-logs",
+      "t-refresh-tokens"
+    ],
+    "relationshipIds": [
+      "r-stocks-daily-prices",
+      "r-users-watchlist-items",
+      "r-stocks-watchlist-items",
+      "r-watchlist-mdd-snapshots",
+      "r-users-notification-settings",
+      "r-users-notification-logs",
+      "r-watchlist-notification-logs",
+      "r-users-refresh-tokens"
+    ],
+    "indexIds": [],
+    "memoIds": []
+  },
+  "collections": {
+    "tableEntities": {
+      "t-users": {
+        "id": "t-users",
+        "name": "users",
+        "comment": "사용자",
+        "columnIds": ["c-users-id", "c-users-email", "c-users-password", "c-users-created-at", "c-users-updated-at"],
+        "seqColumnIds": ["c-users-id", "c-users-email", "c-users-password", "c-users-created-at", "c-users-updated-at"],
+        "ui": {
+          "x": 200,
+          "y": 50,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "color": ""
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "t-stocks": {
+        "id": "t-stocks",
+        "name": "stocks",
+        "comment": "종목 마스터",
+        "columnIds": ["c-stocks-id", "c-stocks-symbol", "c-stocks-name", "c-stocks-market", "c-stocks-created-at", "c-stocks-updated-at"],
+        "seqColumnIds": ["c-stocks-id", "c-stocks-symbol", "c-stocks-name", "c-stocks-market", "c-stocks-created-at", "c-stocks-updated-at"],
+        "ui": {
+          "x": 750,
+          "y": 50,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "color": ""
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "t-daily-prices": {
+        "id": "t-daily-prices",
+        "name": "daily_prices",
+        "comment": "일별 시세",
+        "columnIds": ["c-dp-id", "c-dp-stock-id", "c-dp-trade-date", "c-dp-close-price", "c-dp-created-at"],
+        "seqColumnIds": ["c-dp-id", "c-dp-stock-id", "c-dp-trade-date", "c-dp-close-price", "c-dp-created-at"],
+        "ui": {
+          "x": 800,
+          "y": 400,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "color": ""
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "t-watchlist-items": {
+        "id": "t-watchlist-items",
+        "name": "watchlist_items",
+        "comment": "관심종목",
+        "columnIds": ["c-wi-id", "c-wi-user-id", "c-wi-stock-id", "c-wi-threshold", "c-wi-mdd-period", "c-wi-created-at", "c-wi-updated-at"],
+        "seqColumnIds": ["c-wi-id", "c-wi-user-id", "c-wi-stock-id", "c-wi-threshold", "c-wi-mdd-period", "c-wi-created-at", "c-wi-updated-at"],
+        "ui": {
+          "x": 420,
+          "y": 400,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "color": ""
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "t-mdd-snapshots": {
+        "id": "t-mdd-snapshots",
+        "name": "mdd_snapshots",
+        "comment": "MDD 스냅샷",
+        "columnIds": ["c-ms-id", "c-ms-watchlist-item-id", "c-ms-calc-date", "c-ms-peak-price", "c-ms-current-price", "c-ms-mdd-value", "c-ms-created-at"],
+        "seqColumnIds": ["c-ms-id", "c-ms-watchlist-item-id", "c-ms-calc-date", "c-ms-peak-price", "c-ms-current-price", "c-ms-mdd-value", "c-ms-created-at"],
+        "ui": {
+          "x": 500,
+          "y": 740,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "color": ""
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "t-notification-settings": {
+        "id": "t-notification-settings",
+        "name": "notification_settings",
+        "comment": "알림 설정",
+        "columnIds": ["c-ns-id", "c-ns-user-id", "c-ns-channel-type", "c-ns-telegram-chat-id", "c-ns-slack-webhook-url", "c-ns-enabled", "c-ns-created-at", "c-ns-updated-at"],
+        "seqColumnIds": ["c-ns-id", "c-ns-user-id", "c-ns-channel-type", "c-ns-telegram-chat-id", "c-ns-slack-webhook-url", "c-ns-enabled", "c-ns-created-at", "c-ns-updated-at"],
+        "ui": {
+          "x": 50,
+          "y": 740,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "color": ""
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "t-notification-logs": {
+        "id": "t-notification-logs",
+        "name": "notification_logs",
+        "comment": "알림 발송 로그",
+        "columnIds": ["c-nl-id", "c-nl-user-id", "c-nl-watchlist-item-id", "c-nl-channel-type", "c-nl-mdd-value", "c-nl-threshold", "c-nl-status", "c-nl-message", "c-nl-sent-at"],
+        "seqColumnIds": ["c-nl-id", "c-nl-user-id", "c-nl-watchlist-item-id", "c-nl-channel-type", "c-nl-mdd-value", "c-nl-threshold", "c-nl-status", "c-nl-message", "c-nl-sent-at"],
+        "ui": {
+          "x": 250,
+          "y": 1080,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "color": ""
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "t-refresh-tokens": {
+        "id": "t-refresh-tokens",
+        "name": "refresh_tokens",
+        "comment": "리프레시 토큰",
+        "columnIds": ["c-rt-id", "c-rt-user-id", "c-rt-token", "c-rt-expires-at", "c-rt-created-at"],
+        "seqColumnIds": ["c-rt-id", "c-rt-user-id", "c-rt-token", "c-rt-expires-at", "c-rt-created-at"],
+        "ui": {
+          "x": 50,
+          "y": 400,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "color": ""
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      }
+    },
+    "tableColumnEntities": {
+      "c-users-id": {
+        "id": "c-users-id",
+        "tableId": "t-users",
+        "name": "id",
+        "comment": "사용자 ID",
+        "dataType": "BIGSERIAL",
+        "default": "",
+        "options": 11,
+        "ui": { "keys": 1, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-users-email": {
+        "id": "c-users-email",
+        "tableId": "t-users",
+        "name": "email",
+        "comment": "이메일",
+        "dataType": "VARCHAR(255)",
+        "default": "",
+        "options": 12,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-users-password": {
+        "id": "c-users-password",
+        "tableId": "t-users",
+        "name": "password",
+        "comment": "비밀번호",
+        "dataType": "VARCHAR(255)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-users-created-at": {
+        "id": "c-users-created-at",
+        "tableId": "t-users",
+        "name": "created_at",
+        "comment": "생성일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-users-updated-at": {
+        "id": "c-users-updated-at",
+        "tableId": "t-users",
+        "name": "updated_at",
+        "comment": "수정일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+
+      "c-stocks-id": {
+        "id": "c-stocks-id",
+        "tableId": "t-stocks",
+        "name": "id",
+        "comment": "종목 ID",
+        "dataType": "BIGSERIAL",
+        "default": "",
+        "options": 11,
+        "ui": { "keys": 1, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-stocks-symbol": {
+        "id": "c-stocks-symbol",
+        "tableId": "t-stocks",
+        "name": "symbol",
+        "comment": "종목 심볼",
+        "dataType": "VARCHAR(20)",
+        "default": "",
+        "options": 12,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-stocks-name": {
+        "id": "c-stocks-name",
+        "tableId": "t-stocks",
+        "name": "name",
+        "comment": "종목명",
+        "dataType": "VARCHAR(255)",
+        "default": "",
+        "options": 0,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-stocks-market": {
+        "id": "c-stocks-market",
+        "tableId": "t-stocks",
+        "name": "market",
+        "comment": "거래소",
+        "dataType": "VARCHAR(10)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-stocks-created-at": {
+        "id": "c-stocks-created-at",
+        "tableId": "t-stocks",
+        "name": "created_at",
+        "comment": "생성일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-stocks-updated-at": {
+        "id": "c-stocks-updated-at",
+        "tableId": "t-stocks",
+        "name": "updated_at",
+        "comment": "수정일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+
+      "c-dp-id": {
+        "id": "c-dp-id",
+        "tableId": "t-daily-prices",
+        "name": "id",
+        "comment": "시세 ID",
+        "dataType": "BIGSERIAL",
+        "default": "",
+        "options": 11,
+        "ui": { "keys": 1, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-dp-stock-id": {
+        "id": "c-dp-stock-id",
+        "tableId": "t-daily-prices",
+        "name": "stock_id",
+        "comment": "종목 FK",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 2, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-dp-trade-date": {
+        "id": "c-dp-trade-date",
+        "tableId": "t-daily-prices",
+        "name": "trade_date",
+        "comment": "거래일",
+        "dataType": "DATE",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-dp-close-price": {
+        "id": "c-dp-close-price",
+        "tableId": "t-daily-prices",
+        "name": "close_price",
+        "comment": "종가",
+        "dataType": "NUMERIC(20,4)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-dp-created-at": {
+        "id": "c-dp-created-at",
+        "tableId": "t-daily-prices",
+        "name": "created_at",
+        "comment": "생성일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+
+      "c-wi-id": {
+        "id": "c-wi-id",
+        "tableId": "t-watchlist-items",
+        "name": "id",
+        "comment": "관심종목 ID",
+        "dataType": "BIGSERIAL",
+        "default": "",
+        "options": 11,
+        "ui": { "keys": 1, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-wi-user-id": {
+        "id": "c-wi-user-id",
+        "tableId": "t-watchlist-items",
+        "name": "user_id",
+        "comment": "사용자 FK",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 2, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-wi-stock-id": {
+        "id": "c-wi-stock-id",
+        "tableId": "t-watchlist-items",
+        "name": "stock_id",
+        "comment": "종목 FK",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 2, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-wi-threshold": {
+        "id": "c-wi-threshold",
+        "tableId": "t-watchlist-items",
+        "name": "threshold",
+        "comment": "MDD 임계값",
+        "dataType": "NUMERIC(5,2)",
+        "default": "-20.00",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-wi-mdd-period": {
+        "id": "c-wi-mdd-period",
+        "tableId": "t-watchlist-items",
+        "name": "mdd_period",
+        "comment": "MDD 기간",
+        "dataType": "VARCHAR(10)",
+        "default": "'52W'",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-wi-created-at": {
+        "id": "c-wi-created-at",
+        "tableId": "t-watchlist-items",
+        "name": "created_at",
+        "comment": "생성일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-wi-updated-at": {
+        "id": "c-wi-updated-at",
+        "tableId": "t-watchlist-items",
+        "name": "updated_at",
+        "comment": "수정일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+
+      "c-ms-id": {
+        "id": "c-ms-id",
+        "tableId": "t-mdd-snapshots",
+        "name": "id",
+        "comment": "스냅샷 ID",
+        "dataType": "BIGSERIAL",
+        "default": "",
+        "options": 11,
+        "ui": { "keys": 1, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ms-watchlist-item-id": {
+        "id": "c-ms-watchlist-item-id",
+        "tableId": "t-mdd-snapshots",
+        "name": "watchlist_item_id",
+        "comment": "관심종목 FK",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 2, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ms-calc-date": {
+        "id": "c-ms-calc-date",
+        "tableId": "t-mdd-snapshots",
+        "name": "calc_date",
+        "comment": "계산일",
+        "dataType": "DATE",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ms-peak-price": {
+        "id": "c-ms-peak-price",
+        "tableId": "t-mdd-snapshots",
+        "name": "peak_price",
+        "comment": "최고가",
+        "dataType": "NUMERIC(20,4)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ms-current-price": {
+        "id": "c-ms-current-price",
+        "tableId": "t-mdd-snapshots",
+        "name": "current_price",
+        "comment": "현재가",
+        "dataType": "NUMERIC(20,4)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ms-mdd-value": {
+        "id": "c-ms-mdd-value",
+        "tableId": "t-mdd-snapshots",
+        "name": "mdd_value",
+        "comment": "MDD 값",
+        "dataType": "NUMERIC(7,4)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ms-created-at": {
+        "id": "c-ms-created-at",
+        "tableId": "t-mdd-snapshots",
+        "name": "created_at",
+        "comment": "생성일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+
+      "c-ns-id": {
+        "id": "c-ns-id",
+        "tableId": "t-notification-settings",
+        "name": "id",
+        "comment": "설정 ID",
+        "dataType": "BIGSERIAL",
+        "default": "",
+        "options": 11,
+        "ui": { "keys": 1, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ns-user-id": {
+        "id": "c-ns-user-id",
+        "tableId": "t-notification-settings",
+        "name": "user_id",
+        "comment": "사용자 FK",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 2, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ns-channel-type": {
+        "id": "c-ns-channel-type",
+        "tableId": "t-notification-settings",
+        "name": "channel_type",
+        "comment": "알림 채널",
+        "dataType": "VARCHAR(20)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ns-telegram-chat-id": {
+        "id": "c-ns-telegram-chat-id",
+        "tableId": "t-notification-settings",
+        "name": "telegram_chat_id",
+        "comment": "텔레그램 채팅 ID",
+        "dataType": "VARCHAR(100)",
+        "default": "",
+        "options": 0,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ns-slack-webhook-url": {
+        "id": "c-ns-slack-webhook-url",
+        "tableId": "t-notification-settings",
+        "name": "slack_webhook_url",
+        "comment": "슬랙 웹훅 URL",
+        "dataType": "VARCHAR(500)",
+        "default": "",
+        "options": 0,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ns-enabled": {
+        "id": "c-ns-enabled",
+        "tableId": "t-notification-settings",
+        "name": "enabled",
+        "comment": "활성화 여부",
+        "dataType": "BOOLEAN",
+        "default": "TRUE",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ns-created-at": {
+        "id": "c-ns-created-at",
+        "tableId": "t-notification-settings",
+        "name": "created_at",
+        "comment": "생성일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-ns-updated-at": {
+        "id": "c-ns-updated-at",
+        "tableId": "t-notification-settings",
+        "name": "updated_at",
+        "comment": "수정일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+
+      "c-nl-id": {
+        "id": "c-nl-id",
+        "tableId": "t-notification-logs",
+        "name": "id",
+        "comment": "로그 ID",
+        "dataType": "BIGSERIAL",
+        "default": "",
+        "options": 11,
+        "ui": { "keys": 1, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-nl-user-id": {
+        "id": "c-nl-user-id",
+        "tableId": "t-notification-logs",
+        "name": "user_id",
+        "comment": "사용자 FK",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 2, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-nl-watchlist-item-id": {
+        "id": "c-nl-watchlist-item-id",
+        "tableId": "t-notification-logs",
+        "name": "watchlist_item_id",
+        "comment": "관심종목 FK",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 2, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-nl-channel-type": {
+        "id": "c-nl-channel-type",
+        "tableId": "t-notification-logs",
+        "name": "channel_type",
+        "comment": "알림 채널",
+        "dataType": "VARCHAR(20)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-nl-mdd-value": {
+        "id": "c-nl-mdd-value",
+        "tableId": "t-notification-logs",
+        "name": "mdd_value",
+        "comment": "MDD 값",
+        "dataType": "NUMERIC(7,4)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-nl-threshold": {
+        "id": "c-nl-threshold",
+        "tableId": "t-notification-logs",
+        "name": "threshold",
+        "comment": "임계값",
+        "dataType": "NUMERIC(5,2)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-nl-status": {
+        "id": "c-nl-status",
+        "tableId": "t-notification-logs",
+        "name": "status",
+        "comment": "발송 상태",
+        "dataType": "VARCHAR(20)",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-nl-message": {
+        "id": "c-nl-message",
+        "tableId": "t-notification-logs",
+        "name": "message",
+        "comment": "메시지 내용",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-nl-sent-at": {
+        "id": "c-nl-sent-at",
+        "tableId": "t-notification-logs",
+        "name": "sent_at",
+        "comment": "발송일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+
+      "c-rt-id": {
+        "id": "c-rt-id",
+        "tableId": "t-refresh-tokens",
+        "name": "id",
+        "comment": "토큰 ID",
+        "dataType": "BIGSERIAL",
+        "default": "",
+        "options": 11,
+        "ui": { "keys": 1, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-rt-user-id": {
+        "id": "c-rt-user-id",
+        "tableId": "t-refresh-tokens",
+        "name": "user_id",
+        "comment": "사용자 FK",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 2, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-rt-token": {
+        "id": "c-rt-token",
+        "tableId": "t-refresh-tokens",
+        "name": "token",
+        "comment": "리프레시 토큰",
+        "dataType": "VARCHAR(500)",
+        "default": "",
+        "options": 12,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-rt-expires-at": {
+        "id": "c-rt-expires-at",
+        "tableId": "t-refresh-tokens",
+        "name": "expires_at",
+        "comment": "만료일시",
+        "dataType": "TIMESTAMP",
+        "default": "",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "c-rt-created-at": {
+        "id": "c-rt-created-at",
+        "tableId": "t-refresh-tokens",
+        "name": "created_at",
+        "comment": "생성일시",
+        "dataType": "TIMESTAMP",
+        "default": "NOW()",
+        "options": 8,
+        "ui": { "keys": 0, "widthName": 60, "widthComment": 60, "widthDataType": 60, "widthDefault": 60 },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      }
+    },
+    "relationshipEntities": {
+      "r-stocks-daily-prices": {
+        "id": "r-stocks-daily-prices",
+        "identification": false,
+        "relationshipType": 4,
+        "startRelationshipType": 2,
+        "start": {
+          "tableId": "t-stocks",
+          "columnIds": ["c-stocks-id"]
+        },
+        "end": {
+          "tableId": "t-daily-prices",
+          "columnIds": ["c-dp-stock-id"]
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "r-users-watchlist-items": {
+        "id": "r-users-watchlist-items",
+        "identification": false,
+        "relationshipType": 4,
+        "startRelationshipType": 2,
+        "start": {
+          "tableId": "t-users",
+          "columnIds": ["c-users-id"]
+        },
+        "end": {
+          "tableId": "t-watchlist-items",
+          "columnIds": ["c-wi-user-id"]
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "r-stocks-watchlist-items": {
+        "id": "r-stocks-watchlist-items",
+        "identification": false,
+        "relationshipType": 4,
+        "startRelationshipType": 2,
+        "start": {
+          "tableId": "t-stocks",
+          "columnIds": ["c-stocks-id"]
+        },
+        "end": {
+          "tableId": "t-watchlist-items",
+          "columnIds": ["c-wi-stock-id"]
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "r-watchlist-mdd-snapshots": {
+        "id": "r-watchlist-mdd-snapshots",
+        "identification": false,
+        "relationshipType": 4,
+        "startRelationshipType": 2,
+        "start": {
+          "tableId": "t-watchlist-items",
+          "columnIds": ["c-wi-id"]
+        },
+        "end": {
+          "tableId": "t-mdd-snapshots",
+          "columnIds": ["c-ms-watchlist-item-id"]
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "r-users-notification-settings": {
+        "id": "r-users-notification-settings",
+        "identification": false,
+        "relationshipType": 4,
+        "startRelationshipType": 2,
+        "start": {
+          "tableId": "t-users",
+          "columnIds": ["c-users-id"]
+        },
+        "end": {
+          "tableId": "t-notification-settings",
+          "columnIds": ["c-ns-user-id"]
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "r-users-notification-logs": {
+        "id": "r-users-notification-logs",
+        "identification": false,
+        "relationshipType": 4,
+        "startRelationshipType": 2,
+        "start": {
+          "tableId": "t-users",
+          "columnIds": ["c-users-id"]
+        },
+        "end": {
+          "tableId": "t-notification-logs",
+          "columnIds": ["c-nl-user-id"]
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "r-watchlist-notification-logs": {
+        "id": "r-watchlist-notification-logs",
+        "identification": false,
+        "relationshipType": 4,
+        "startRelationshipType": 2,
+        "start": {
+          "tableId": "t-watchlist-items",
+          "columnIds": ["c-wi-id"]
+        },
+        "end": {
+          "tableId": "t-notification-logs",
+          "columnIds": ["c-nl-watchlist-item-id"]
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      },
+      "r-users-refresh-tokens": {
+        "id": "r-users-refresh-tokens",
+        "identification": false,
+        "relationshipType": 4,
+        "startRelationshipType": 2,
+        "start": {
+          "tableId": "t-users",
+          "columnIds": ["c-users-id"]
+        },
+        "end": {
+          "tableId": "t-refresh-tokens",
+          "columnIds": ["c-rt-user-id"]
+        },
+        "meta": { "updateAt": 1709078400000, "createAt": 1709078400000 }
+      }
+    },
+    "indexEntities": {},
+    "indexColumnEntities": {},
+    "memoEntities": {}
+  }
+}
