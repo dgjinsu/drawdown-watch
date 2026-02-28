@@ -10,4 +10,5 @@ public record WatchlistAddRequest(
         @NotBlank String symbol,
         @DecimalMax("0") BigDecimal threshold,
         @Pattern(regexp = "^(4W|12W|26W|52W)$") String mddPeriod
-) {}
+) {
+}

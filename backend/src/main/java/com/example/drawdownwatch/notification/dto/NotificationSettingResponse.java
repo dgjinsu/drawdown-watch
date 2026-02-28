@@ -9,4 +9,5 @@ public record NotificationSettingResponse(
         String slackWebhookUrl,
         boolean enabled,
         LocalDateTime createdAt
-) {}
+) {
+}

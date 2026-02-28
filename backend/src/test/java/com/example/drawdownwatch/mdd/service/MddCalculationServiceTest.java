@@ -94,8 +94,8 @@ class MddCalculationServiceTest {
         LocalDate today = LocalDate.now();
         List<DailyPrice> prices = List.of(
                 buildDailyPrice(stock, today.minusDays(10), BigDecimal.valueOf(100_000)),
-                buildDailyPrice(stock, today.minusDays(5),  BigDecimal.valueOf(90_000)),
-                buildDailyPrice(stock, today,               BigDecimal.valueOf(75_000))
+                buildDailyPrice(stock, today.minusDays(5), BigDecimal.valueOf(90_000)),
+                buildDailyPrice(stock, today, BigDecimal.valueOf(75_000))
         );
 
         given(dailyPriceRepository.findByStockIdAndTradeDateAfter(eq(1L), any(LocalDate.class)))
@@ -133,7 +133,7 @@ class MddCalculationServiceTest {
         LocalDate today = LocalDate.now();
         List<DailyPrice> prices = List.of(
                 buildDailyPrice(stock, today.minusDays(1), BigDecimal.valueOf(50_000)),
-                buildDailyPrice(stock, today,              BigDecimal.valueOf(50_000))
+                buildDailyPrice(stock, today, BigDecimal.valueOf(50_000))
         );
 
         given(dailyPriceRepository.findByStockIdAndTradeDateAfter(eq(1L), any(LocalDate.class)))
@@ -352,7 +352,7 @@ class MddCalculationServiceTest {
         LocalDate today = LocalDate.now();
         List<DailyPrice> prices = List.of(
                 buildDailyPrice(stock, today.minusDays(2), BigDecimal.valueOf(200_000)),
-                buildDailyPrice(stock, today,              BigDecimal.valueOf(150_000))
+                buildDailyPrice(stock, today, BigDecimal.valueOf(150_000))
         );
 
         given(dailyPriceRepository.findByStockIdAndTradeDateAfter(eq(1L), any(LocalDate.class)))

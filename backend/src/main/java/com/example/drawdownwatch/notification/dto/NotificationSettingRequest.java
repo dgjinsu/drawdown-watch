@@ -7,4 +7,5 @@ public record NotificationSettingRequest(
         @NotBlank @Pattern(regexp = "^(TELEGRAM|SLACK)$") String channelType,
         String telegramChatId,
         String slackWebhookUrl
-) {}
+) {
+}

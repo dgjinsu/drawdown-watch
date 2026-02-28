@@ -11,4 +11,5 @@ public record MddResponse(
         BigDecimal mddValue,
         String mddPeriod,
         LocalDate calcDate
-) {}
+) {
+}

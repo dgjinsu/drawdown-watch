@@ -16,4 +16,5 @@ public record WatchlistItemResponse(
         BigDecimal currentPrice,
         LocalDate calcDate,
         LocalDateTime createdAt
-) {}
+) {
+}

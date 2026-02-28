@@ -45,5 +45,6 @@ public class TelegramSender {
         log.info("텔레그램 발송 성공 (chatId={})", chatId);
     }
 
-    private record TelegramResponse(boolean ok) {}
+    private record TelegramResponse(boolean ok) {
+    }
 }
