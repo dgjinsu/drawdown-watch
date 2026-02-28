@@ -49,6 +49,12 @@ class NotificationServiceTest {
     @Mock
     private SlackSender slackSender;
 
+    @Mock
+    private EmailSender emailSender;
+
+    @Mock
+    private DiscordSender discordSender;
+
     @InjectMocks
     private NotificationService notificationService;
 
@@ -115,6 +121,25 @@ class NotificationServiceTest {
                 .user(user)
                 .channelType("SLACK")
                 .slackWebhookUrl("https://hooks.slack.com/test")
+                .enabled(true)
+                .build();
+    }
+
+    private NotificationSetting buildEmailSetting(User user) {
+        return NotificationSetting.builder()
+                .id(3L)
+                .user(user)
+                .channelType("EMAIL")
+                .enabled(true)
+                .build();
+    }
+
+    private NotificationSetting buildDiscordSetting(User user) {
+        return NotificationSetting.builder()
+                .id(4L)
+                .user(user)
+                .channelType("DISCORD")
+                .discordWebhookUrl("https://discord.com/api/webhooks/test")
                 .enabled(true)
                 .build();
     }
@@ -340,5 +365,207 @@ class NotificationServiceTest {
         // Then
         verify(telegramSender).send(eq("chat-123"), anyString());
         verify(slackSender).send(eq("https://hooks.slack.com/test"), anyString());
+    }
+
+    @Test
+    @DisplayName("Email 채널 활성화 시 emailSender.send() 호출됨")
+    void sendAlertIfNeeded_이메일채널_발송성공후SENT로그저장() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting emailSetting = buildEmailSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(emailSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        verify(emailSender).send(eq("user@example.com"), eq("[MDD Watch] MDD 경보"), anyString());
+        verify(telegramSender, never()).send(anyString(), anyString());
+        verify(slackSender, never()).send(anyString(), anyString());
+        verify(discordSender, never()).send(anyString(), anyString());
+
+        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
+        verify(notificationLogRepository).save(logCaptor.capture());
+        assertThat(logCaptor.getValue().getStatus()).isEqualTo("SENT");
+        assertThat(logCaptor.getValue().getChannelType()).isEqualTo("EMAIL");
+    }
+
+    @Test
+    @DisplayName("Discord 채널 활성화 시 discordSender.send() 호출됨")
+    void sendAlertIfNeeded_디스코드채널_발송성공후SENT로그저장() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting discordSetting = buildDiscordSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(discordSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        verify(discordSender).send(eq("https://discord.com/api/webhooks/test"), anyString());
+        verify(telegramSender, never()).send(anyString(), anyString());
+        verify(slackSender, never()).send(anyString(), anyString());
+        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+
+        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
+        verify(notificationLogRepository).save(logCaptor.capture());
+        assertThat(logCaptor.getValue().getStatus()).isEqualTo("SENT");
+        assertThat(logCaptor.getValue().getChannelType()).isEqualTo("DISCORD");
+    }
+
+    @Test
+    @DisplayName("Telegram + Email + Discord 동시 설정: 모든 채널 발송 시도")
+    void sendAlertIfNeeded_4채널동시설정_모두발송() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting telegramSetting = buildTelegramSetting(user);
+        NotificationSetting slackSetting = buildSlackSetting(user);
+        NotificationSetting emailSetting = buildEmailSetting(user);
+        NotificationSetting discordSetting = buildDiscordSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(telegramSetting, slackSetting, emailSetting, discordSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        verify(telegramSender).send(eq("chat-123"), anyString());
+        verify(slackSender).send(eq("https://hooks.slack.com/test"), anyString());
+        verify(emailSender).send(eq("user@example.com"), anyString(), anyString());
+        verify(discordSender).send(eq("https://discord.com/api/webhooks/test"), anyString());
+    }
+
+    @Test
+    @DisplayName("Email 발송 실패 시 나머지 Discord 채널 정상 발송: 한 채널 실패 시 타 채널 영향 없음")
+    void sendAlertIfNeeded_이메일실패_디스코드정상발송() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting emailSetting = buildEmailSetting(user);
+        NotificationSetting discordSetting = buildDiscordSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(emailSetting, discordSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("SMTP 연결 실패"))
+                .when(emailSender).send(anyString(), anyString(), anyString());
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        verify(discordSender).send(eq("https://discord.com/api/webhooks/test"), anyString());
+
+        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
+        // EMAIL 실패 로그 + DISCORD 성공 로그 = 2회 저장
+        verify(notificationLogRepository, org.mockito.Mockito.times(2)).save(logCaptor.capture());
+        List<NotificationLog> savedLogs = logCaptor.getAllValues();
+        assertThat(savedLogs).anySatisfy(log ->
+                assertThat(log.getStatus()).isEqualTo("FAILED"));
+        assertThat(savedLogs).anySatisfy(log ->
+                assertThat(log.getStatus()).isEqualTo("SENT"));
+    }
+
+    @Test
+    @DisplayName("Email 발송 실패: FAILED 로그 저장")
+    void sendAlertIfNeeded_이메일발송실패_FAILED로그저장() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting emailSetting = buildEmailSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(emailSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("SMTP 서버 오류"))
+                .when(emailSender).send(anyString(), anyString(), anyString());
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
+        verify(notificationLogRepository).save(logCaptor.capture());
+        assertThat(logCaptor.getValue().getStatus()).isEqualTo("FAILED");
+        assertThat(logCaptor.getValue().getChannelType()).isEqualTo("EMAIL");
+        assertThat(logCaptor.getValue().getMessage()).contains("SMTP 서버 오류");
+    }
+
+    @Test
+    @DisplayName("Discord 발송 실패: FAILED 로그 저장")
+    void sendAlertIfNeeded_디스코드발송실패_FAILED로그저장() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+        MddSnapshot snapshot = buildSnapshot(item, new BigDecimal("-25.0000"));
+
+        NotificationSetting discordSetting = buildDiscordSetting(user);
+
+        given(notificationSettingRepository.findByUserIdAndEnabledTrue(1L))
+                .willReturn(List.of(discordSetting));
+        given(notificationLogRepository.findTopByWatchlistItemIdAndStatusAndSentAtAfter(
+                eq(1L), eq("SENT"), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(notificationLogRepository.save(any(NotificationLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("Discord webhook 오류"))
+                .when(discordSender).send(anyString(), anyString());
+
+        // When
+        notificationService.sendAlertIfNeeded(item, snapshot);
+
+        // Then
+        ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
+        verify(notificationLogRepository).save(logCaptor.capture());
+        assertThat(logCaptor.getValue().getStatus()).isEqualTo("FAILED");
+        assertThat(logCaptor.getValue().getChannelType()).isEqualTo("DISCORD");
+        assertThat(logCaptor.getValue().getMessage()).contains("Discord webhook 오류");
     }
 }
