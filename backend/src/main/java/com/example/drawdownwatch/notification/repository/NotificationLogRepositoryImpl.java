@@ -23,7 +23,7 @@ public class NotificationLogRepositoryImpl implements NotificationLogRepositoryC
 
     @Override
     public Page<NotificationLog> findByUserIdWithFilters(Long userId, String status, String channelType,
-                                                          LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
+                                                         LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(notificationLog.user.id.eq(userId));
 

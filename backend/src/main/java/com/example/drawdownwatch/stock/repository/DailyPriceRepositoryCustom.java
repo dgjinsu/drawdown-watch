@@ -1,6 +1,7 @@
 package com.example.drawdownwatch.stock.repository;
 
 import com.example.drawdownwatch.stock.entity.DailyPrice;
+
 import java.time.LocalDate;
 import java.util.List;
 

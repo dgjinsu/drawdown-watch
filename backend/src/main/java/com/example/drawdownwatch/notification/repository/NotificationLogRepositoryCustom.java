@@ -8,5 +8,5 @@ import java.time.LocalDateTime;
 
 public interface NotificationLogRepositoryCustom {
     Page<NotificationLog> findByUserIdWithFilters(Long userId, String status, String channelType,
-                                                   LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
+                                                  LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
 }
