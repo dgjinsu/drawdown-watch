@@ -1,6 +1,6 @@
 package com.example.drawdownwatch.global.config;
 
-import com.example.drawdownwatch.user.service.JwtTokenProvider;
+import com.example.drawdownwatch.user.application.service.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

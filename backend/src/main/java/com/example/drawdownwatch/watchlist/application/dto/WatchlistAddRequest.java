@@ -1,0 +1,14 @@
+package com.example.drawdownwatch.watchlist.application.dto;
+
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+
+import java.math.BigDecimal;
+
+public record WatchlistAddRequest(
+        @NotBlank String symbol,
+        @DecimalMax("0") BigDecimal threshold,
+        @Pattern(regexp = "^(4W|12W|26W|52W)$") String mddPeriod
+) {
+}

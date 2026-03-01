@@ -1,6 +1,6 @@
 package com.example.drawdownwatch.global.config;
 
-import com.example.drawdownwatch.user.service.JwtTokenProvider;
+import com.example.drawdownwatch.user.application.service.JwtTokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
