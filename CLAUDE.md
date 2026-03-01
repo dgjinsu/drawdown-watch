@@ -10,7 +10,7 @@
 
 ## 구조
 
-모놀리식. 백엔드는 도메인별 패키지 분리:
+모놀리식. 백엔드는 도메인별 패키지 분리 + 헥사고날 아키텍처:
 
 ```
 backend/src/main/java/com/example/drawdownwatch/
@@ -22,7 +22,7 @@ backend/src/main/java/com/example/drawdownwatch/
 └── user/            (사용자)
 ```
 
-각 도메인: entity → repository → service → controller → dto
+각 도메인: domain/ (Entity) → application/ (port/in UseCase, port/out Repository·Port, service/, dto/) → adapter/ (in/web, out/persistence, out/external)
 
 ## 컨벤션
 
