@@ -8,8 +8,11 @@ import java.util.List;
 
 public interface MarketDataPort {
     List<DailyPrice> fetchDailyPrices(Stock stock, LocalDate fromDate, LocalDate toDate);
+
     StockInfo fetchStockInfo(String symbol);
+
     String determineMarket(String symbol, String exchangeName);
 
-    record StockInfo(String shortName, String exchangeName) {}
+    record StockInfo(String shortName, String exchangeName) {
+    }
 }

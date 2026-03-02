@@ -14,7 +14,7 @@ public interface StockPriceStatRepository extends JpaRepository<StockPriceStat, 
     Optional<StockPriceStat> findByStockIdAndCalcDate(Long stockId, LocalDate calcDate);
 
     @Query("SELECT s FROM StockPriceStat s LEFT JOIN FETCH s.stock " +
-           "WHERE s.stock.id IN :stockIds " +
-           "AND s.calcDate = (SELECT MAX(s2.calcDate) FROM StockPriceStat s2 WHERE s2.stock.id = s.stock.id)")
+            "WHERE s.stock.id IN :stockIds " +
+            "AND s.calcDate = (SELECT MAX(s2.calcDate) FROM StockPriceStat s2 WHERE s2.stock.id = s.stock.id)")
     List<StockPriceStat> findLatestByStockIds(@Param("stockIds") List<Long> stockIds);
 }
