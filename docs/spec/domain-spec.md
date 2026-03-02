@@ -1,6 +1,6 @@
 # 도메인 구조 스펙
 
-> 최종 업데이트: 2026-03-01
+> 최종 업데이트: 2026-03-02
 
 ## 도메인 맵
 
@@ -8,10 +8,10 @@
 |--------|--------|-------------|-------------|
 | global | `global` | BaseEntity | 없음 (공통 인프라) |
 | user | `user` | User | 없음 |
-| stock | `stock` | Stock, DailyPrice | 없음 |
+| stock | `stock` | Stock, DailyPrice, StockPriceStat | 없음 |
 | watchlist | `watchlist` | WatchlistItem | user, stock, mdd |
 | mdd | `mdd` | MddSnapshot | stock, watchlist, notification |
-| notification | `notification` | NotificationSetting, NotificationLog | user, watchlist, mdd |
+| notification | `notification` | NotificationSetting, NotificationLog | user, watchlist, mdd, stock |
 
 ## 의존관계 다이어그램
 
@@ -147,8 +147,18 @@ user/
 
 ```
 stock/
+├── application/
+│   ├── dto/
+│   │   └── PriceChangeRates.java
+│   ├── port/
+│   │   └── out/
+│   │       └── StockPriceStatRepository.java
+│   └── service/
+│       └── PriceChangeCalculator.java
 ├── dto/
 │   └── YahooChartResponse.java
+├── domain/
+│   └── StockPriceStat.java
 ├── entity/
 │   ├── DailyPrice.java
 │   └── Stock.java
@@ -168,6 +178,7 @@ stock/
 |--------|--------|------|-----------|
 | Stock | `stocks` | BaseEntity | `id`, `symbol`, `name`, `market` |
 | DailyPrice | `daily_prices` | 없음 | `id`, `stock` (FK), `tradeDate`, `closePrice` |
+| StockPriceStat | `stock_price_stats` | BaseEntity | `id`, `stock` (FK, LAZY), `calcDate`, `currentPrice`, `change1d`, `change1w`, `change1m`, `changeYtd` |
 
 #### Repository
 
@@ -177,6 +188,7 @@ stock/
 | DailyPriceRepository | JpaRepository + Custom | `findTopByStockIdOrderByTradeDateDesc`, `existsByStockIdAndTradeDate` |
 | DailyPriceRepositoryCustom | QueryDSL 인터페이스 | `findByStockIdAndTradeDateAfter` |
 | DailyPriceRepositoryImpl | QueryDSL 구현체 | JPAQueryFactory 사용 |
+| StockPriceStatRepository | JpaRepository (port/out) | `findByStockIdAndCalcDate` - 특정 날짜 레코드 조회, `findLatestByStockIds` - 복수 종목 최신 변동률 배치 조회 |
 
 #### Service
 
@@ -184,12 +196,20 @@ stock/
 |--------|----------------|------|
 | StockService | StockRepository, DailyPriceRepository, YahooFinanceClient | 종목 생성/조회, 시세 수집 및 저장 |
 | YahooFinanceClient | RestClient (`yahooFinanceRestClient`) | Yahoo Finance API 호출, 재시도 로직 포함 |
+| PriceChangeCalculator | DailyPriceRepository, StockPriceStatRepository | `calculateAndSave(Stock)` - 스케줄러에서 호출, daily_prices 기반으로 변동률 계산 후 stock_price_stats에 저장. `calculateBatch(List<Long>)` - (레거시) 런타임 계산 |
 
 #### DTO
 
 | DTO | 타입 | 설명 |
 |-----|------|------|
 | YahooChartResponse | record (중첩) | Yahoo Finance API 응답 매핑. Chart, Result, Meta, Indicators, Quote, ChartError 포함 |
+| PriceChangeRates | record (application/dto) | `change1D`, `change1W`, `change1M`, `changeYTD`. 가격 변동률 전달용 |
+
+#### Entity 메서드
+
+| 엔티티 | 메서드 | 설명 |
+|--------|--------|------|
+| StockPriceStat | `updateRates()` | 재계산 시 변동률 필드를 갱신 |
 
 #### 외부 의존
 
@@ -209,20 +229,28 @@ stock/
 
 ```
 watchlist/
-├── controller/
-│   └── WatchlistController.java
-├── dto/
-│   ├── WatchlistAddRequest.java
-│   ├── WatchlistItemResponse.java
-│   └── WatchlistUpdateRequest.java
-├── entity/
-│   └── WatchlistItem.java
-├── repository/
-│   ├── WatchlistItemRepository.java
-│   ├── WatchlistItemRepositoryCustom.java
-│   └── WatchlistItemRepositoryImpl.java
-└── service/
-    └── WatchlistService.java
+├── adapter/
+│   ├── in/web/
+│   │   └── WatchlistController.java
+│   └── out/persistence/
+│       └── WatchlistItemRepositoryImpl.java
+├── application/
+│   ├── dto/
+│   │   ├── PricePointResponse.java
+│   │   ├── WatchlistAddRequest.java
+│   │   ├── WatchlistItemDetailResponse.java
+│   │   ├── WatchlistItemResponse.java
+│   │   └── WatchlistUpdateRequest.java
+│   ├── port/
+│   │   ├── in/
+│   │   │   └── WatchlistUseCase.java
+│   │   └── out/
+│   │       ├── WatchlistItemRepository.java
+│   │       └── WatchlistItemRepositoryCustom.java
+│   └── service/
+│       └── WatchlistService.java
+└── domain/
+    └── WatchlistItem.java
 ```
 
 #### Entity
@@ -243,7 +271,7 @@ watchlist/
 
 | 서비스 | 주입받는 의존성 | 설명 |
 |--------|----------------|------|
-| WatchlistService | WatchlistItemRepository, MddSnapshotRepository, StockService, MddCalculationService, EntityManager | 관심종목 CRUD. 등록/수정 시 시세 수집 + MDD 계산 연동 |
+| WatchlistService | WatchlistItemRepository, MddSnapshotRepository, StockService, MddCalculationService, EntityManager, StockPriceStatRepository, DailyPriceRepositoryCustom | 관심종목 CRUD. 등록/수정 시 시세 수집 + MDD 계산 연동. `getItemDetail()`에서 가격 변동률 조회. `getItemPrices()`에서 기간별 일별 시세 조회 |
 
 #### Controller
 
@@ -254,6 +282,8 @@ watchlist/
 | | `GET /api/watchlist-items/{id}` | getItem |
 | | `PATCH /api/watchlist-items/{id}` | updateItem |
 | | `DELETE /api/watchlist-items/{id}` | deleteItem |
+| | `GET /api/watchlist-items/{id}/detail` | getItemDetail |
+| | `GET /api/watchlist-items/{id}/prices` | getItemPrices |
 
 #### DTO
 
@@ -262,6 +292,8 @@ watchlist/
 | WatchlistAddRequest | record | `symbol`, `threshold`, `mddPeriod` |
 | WatchlistUpdateRequest | record | `threshold`, `mddPeriod` |
 | WatchlistItemResponse | record | `id`, `symbol`, `stockName`, `market`, `threshold`, `mddPeriod`, `currentMdd`, `peakPrice`, `currentPrice`, `calcDate`, `createdAt` |
+| WatchlistItemDetailResponse | record | WatchlistItemResponse 필드 전체 + `change1d`, `change1w`, `change1m`, `changeYtd` (nullable) |
+| PricePointResponse | record | `tradeDate`, `closePrice` |
 
 #### 타 도메인 의존
 
@@ -269,6 +301,8 @@ watchlist/
 |-----------|----------|-----------|
 | user | WatchlistItem 엔티티 | `User` FK 참조 (EntityManager.getReference) |
 | stock | WatchlistService | `StockService.getOrCreateStock()`, `StockService.fetchAndSavePrices()` |
+| stock | WatchlistService | `StockPriceStatRepository.findLatestByStockIds()` - 상세 조회 시 변동률 읽기 |
+| stock | WatchlistService | `DailyPriceRepositoryCustom.findByStockIdAndTradeDateAfter()` - 가격 이력 조회 |
 | stock | WatchlistItem 엔티티 | `Stock` FK 참조 |
 | mdd | WatchlistService | `MddCalculationService.calculateMdd()`, `MddSnapshotRepository` 직접 조회 |
 
@@ -293,6 +327,15 @@ mdd/
     └── MddScheduler.java
 ```
 
+#### 스케줄러 실행 흐름
+
+```
+fetchAndSavePrices(stock)
+  → calculateAndSave(stock)        ← PriceChangeCalculator (stock 도메인)
+    → calculateMdd(watchlistItem)  ← MddCalculationService
+      → sendAlertIfNeeded(...)     ← NotificationService
+```
+
 #### Entity
 
 | 엔티티 | 테이블 | 상속 | 주요 필드 |
@@ -310,7 +353,7 @@ mdd/
 | 서비스 | 주입받는 의존성 | 설명 |
 |--------|----------------|------|
 | MddCalculationService | DailyPriceRepository, MddSnapshotRepository | 특정 WatchlistItem에 대한 MDD 계산 및 스냅샷 저장 |
-| MddScheduler | StockRepository, WatchlistItemRepository, StockService, MddCalculationService, NotificationService | 시장별 스케줄링 (`@Scheduled`). 시세 수집 -> MDD 계산 -> 알림 발송 파이프라인 |
+| MddScheduler | StockRepository, WatchlistItemRepository, StockService, MddCalculationService, NotificationService, PriceChangeCalculator | 시장별 스케줄링 (`@Scheduled`). 시세 수집 -> **변동률 계산 저장(calculateAndSave)** -> MDD 계산 -> 알림 발송 파이프라인 |
 
 #### DTO
 
@@ -328,6 +371,7 @@ mdd/
 |-----------|----------|-----------|
 | stock | MddCalculationService | `DailyPriceRepository.findByStockIdAndTradeDateAfter()` |
 | stock | MddScheduler | `StockRepository.findById()`, `StockService.fetchAndSavePrices()` |
+| stock | MddScheduler | `PriceChangeCalculator.calculateAndSave(Stock)` - 시세 수집 직후 변동률 계산 저장 |
 | watchlist | MddCalculationService | `WatchlistItem` 엔티티를 파라미터로 수신 |
 | watchlist | MddScheduler | `WatchlistItemRepository.findDistinctStockIdsByMarkets()`, `WatchlistItemRepository.findAllByStockId()` |
 | watchlist | MddSnapshot 엔티티 | `WatchlistItem` FK 참조 |
@@ -387,7 +431,7 @@ notification/
 
 | 서비스 | 주입받는 의존성 | 설명 |
 |--------|----------------|------|
-| NotificationService | NotificationSettingRepository, NotificationLogRepository, TelegramSender, SlackSender, EmailSender, DiscordSender | 알림 발송 판단 (쿨다운 체크) 및 채널별 발송 위임, 로그 조회 |
+| NotificationService | NotificationSettingRepository, NotificationLogRepository, TelegramSender, SlackSender, EmailSender, DiscordSender, StockPriceStatRepository | 알림 발송 판단 (쿨다운 체크) 및 채널별 발송 위임, 로그 조회. `getNotificationLogs()`에서 `stock_price_stats` 테이블의 사전 계산된 변동률을 읽어 응답에 포함 |
 | TelegramSender | RestClient (`telegramRestClient`) | Telegram Bot API 호출 |
 | SlackSender | RestClient (`slackRestClient`) | Slack Webhook 호출 |
 | EmailSender | JavaMailSender | Spring Mail을 통한 이메일 발송 |
@@ -411,7 +455,7 @@ notification/
 |-----|------|------|
 | NotificationSettingRequest | record | `channelType`, `telegramChatId`, `slackWebhookUrl`, `discordWebhookUrl` |
 | NotificationSettingResponse | record | `id`, `channelType`, `telegramChatId`, `slackWebhookUrl`, `discordWebhookUrl`, `email`, `enabled`, `createdAt` |
-| NotificationLogResponse | record | `id`, `channelType`, `stockSymbol`, `stockName`, `mddValue`, `threshold`, `status`, `message`, `sentAt` |
+| NotificationLogResponse | record | `id`, `channelType`, `stockSymbol`, `stockName`, `mddValue`, `threshold`, `status`, `message`, `sentAt`, `priceChange1D` (nullable), `priceChange1W` (nullable), `priceChange1M` (nullable), `priceChangeYTD` (nullable) |
 | NotificationLogSearchRequest | record | `status`, `channelType`, `startDate`, `endDate` |
 
 #### 외부 의존
@@ -433,6 +477,7 @@ notification/
 | watchlist | NotificationLog 엔티티 | `WatchlistItem` FK 참조 |
 | watchlist | NotificationService | `WatchlistItem` 파라미터로 수신 |
 | mdd | NotificationService | `MddSnapshot` 파라미터로 수신 |
+| stock | NotificationService | `StockPriceStatRepository.findLatestByStockIds()` - 로그 조회 시 사전 계산된 변동률 읽기 |
 
 ---
 
@@ -443,11 +488,12 @@ notification/
 | 소스 (클래스) | 주입받는 타 도메인 의존성 |
 |--------------|-------------------------|
 | `mdd.MddCalculationService` | `stock.DailyPriceRepository` |
-| `mdd.MddScheduler` | `stock.StockRepository`, `stock.StockService`, `watchlist.WatchlistItemRepository`, `notification.NotificationService` |
-| `watchlist.WatchlistService` | `stock.StockService`, `mdd.MddSnapshotRepository`, `mdd.MddCalculationService` |
-| `notification.NotificationService` | 없음 (파라미터로 watchlist/mdd 엔티티를 수신할 뿐, 직접 주입 없음) |
+| `mdd.MddScheduler` | `stock.StockRepository`, `stock.StockService`, `stock.PriceChangeCalculator`, `watchlist.WatchlistItemRepository`, `notification.NotificationService` |
+| `watchlist.WatchlistService` | `stock.StockService`, `stock.StockPriceStatRepository`, `stock.DailyPriceRepositoryCustom`, `mdd.MddSnapshotRepository`, `mdd.MddCalculationService` |
+| `notification.NotificationService` | `stock.StockPriceStatRepository` (로그 조회 시 변동률 읽기) |
 | `notification.NotificationController` | 없음 (자체 도메인 리포지토리/서비스만 주입) |
 | `notification.NotificationLogRepositoryImpl` | QueryDSL Q타입 참조: `stock.QStock`, `watchlist.QWatchlistItem` |
+| `stock.PriceChangeCalculator` | `stock.DailyPriceRepository`, `stock.StockPriceStatRepository` (동일 도메인 내) |
 | `stock.StockService` | 없음 |
 | `user.AuthService` | 없음 |
 
@@ -465,4 +511,6 @@ User (1) ──── (*) NotificationSetting
 User (1) ──── (*) NotificationLog (*) ──── (1) WatchlistItem
 
 Stock (1) ──── (*) DailyPrice
+
+Stock (1) ──── (*) StockPriceStat
 ```

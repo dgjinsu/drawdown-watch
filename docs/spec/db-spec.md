@@ -1,7 +1,7 @@
 # DB 스키마 스펙
 
 > 최종 업데이트: 2026-03-01
-> 마이그레이션 버전: V3 (`V3__add_discord_webhook_url.sql`)
+> 마이그레이션 버전: V4 (`V4__add_stock_price_stats.sql`)
 
 ## 테이블 목록
 
@@ -14,6 +14,7 @@
 | mdd_snapshots | MDD 스냅샷 | watchlist_item_id, calc_date, peak_price, current_price, mdd_value |
 | notification_settings | 알림 설정 | user_id, channel_type, telegram_chat_id, slack_webhook_url, discord_webhook_url, enabled |
 | notification_logs | 알림 발송 로그 | user_id, watchlist_item_id, channel_type, mdd_value, threshold, status, message |
+| stock_price_stats | 종목별 가격 변동률 사전 계산 결과 | stock_id, calc_date, current_price, change_1d, change_1w, change_1m, change_ytd |
 
 > `refresh_tokens` 테이블은 V1에서 생성되었으나 V2에서 삭제됨 (Redis로 이전).
 
@@ -166,12 +167,40 @@ MDD 스냅샷 테이블. 엔티티: `MddSnapshot` (BaseEntity 미상속, `@PrePe
 
 ---
 
+### stock_price_stats
+
+종목별 가격 변동률 사전 계산 결과 테이블. 스케줄러가 매일 계산하여 저장. 엔티티: `StockPriceStat` (BaseEntity 상속)
+
+| 컬럼 | 타입 | 제약조건 | 설명 |
+|------|------|----------|------|
+| id | BIGSERIAL | PRIMARY KEY | ID |
+| stock_id | BIGINT | NOT NULL, FK → stocks(id) ON DELETE CASCADE | 종목 ID |
+| calc_date | DATE | NOT NULL | 계산일 |
+| current_price | NUMERIC(20, 4) | NOT NULL | 현재 가격 |
+| change_1d | NUMERIC(10, 4) | - | 전일 대비 변동률 (%) |
+| change_1w | NUMERIC(10, 4) | - | 주간 변동률 (5거래일, %) |
+| change_1m | NUMERIC(10, 4) | - | 월간 변동률 (~21거래일, %) |
+| change_ytd | NUMERIC(10, 4) | - | 연초 대비 변동률 (%) |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | 생성일시 |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | 수정일시 |
+
+> change_1d, change_1w, change_1m, change_ytd 컬럼은 nullable. 참조 기간 데이터가 부족한 경우 null.
+
+**복합 유니크:**
+- UNIQUE(stock_id, calc_date) — 하루에 종목당 하나의 레코드
+
+**인덱스:**
+- `idx_stock_price_stats_stock_date` ON stock_price_stats(stock_id, calc_date DESC)
+
+---
+
 ## 테이블 관계 (FK)
 
 ```
 users (1) ──< watchlist_items (N)
 stocks (1) ──< watchlist_items (N)
 stocks (1) ──< daily_prices (N)
+stocks (1) ──< stock_price_stats (N)
 watchlist_items (1) ──< mdd_snapshots (N)
 users (1) ──< notification_settings (N)
 users (1) ──< notification_logs (N)
@@ -189,3 +218,4 @@ watchlist_items (1) ──< notification_logs (N)
 | V1 | `V1__init_schema.sql` | 초기 스키마 생성 (users, stocks, daily_prices, watchlist_items, mdd_snapshots, notification_settings, notification_logs, refresh_tokens) |
 | V2 | `V2__drop_refresh_tokens.sql` | refresh_tokens 테이블 삭제 (Redis로 이전) |
 | V3 | `V3__add_discord_webhook_url.sql` | notification_settings에 discord_webhook_url 컬럼 추가 |
+| V4 | `V4__add_stock_price_stats.sql` | stock_price_stats 테이블 생성 (종목별 가격 변동률 사전 계산 결과) |

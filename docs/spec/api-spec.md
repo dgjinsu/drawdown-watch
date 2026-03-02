@@ -1,6 +1,6 @@
 # API 스펙
 
-> 최종 업데이트: 2026-03-01
+> 최종 업데이트: 2026-03-02
 
 ## 공통 사항
 
@@ -65,6 +65,8 @@
 | GET | `/api/watchlist-items/{id}` | 관심종목 단건 조회 | O | - | `WatchlistItemResponse` | 200 OK |
 | PATCH | `/api/watchlist-items/{id}` | 관심종목 수정 | O | `WatchlistUpdateRequest` | `WatchlistItemResponse` | 200 OK |
 | DELETE | `/api/watchlist-items/{id}` | 관심종목 삭제 | O | - | - | 204 No Content |
+| GET | `/api/watchlist-items/{id}/detail` | 관심종목 상세 조회 (가격 변동률 포함) | O | - | `WatchlistItemDetailResponse` | 200 OK |
+| GET | `/api/watchlist-items/{id}/prices` | 관심종목 가격 이력 조회 | O | Query Params | `List<PricePointResponse>` | 200 OK |
 
 ### DTO 상세
 
@@ -98,6 +100,43 @@
 | `currentPrice` | `BigDecimal` | 현재 가격 |
 | `calcDate` | `LocalDate` | MDD 계산일 |
 | `createdAt` | `LocalDateTime` | 등록일시 |
+
+#### WatchlistItemDetailResponse
+
+`WatchlistItemResponse` 필드 전체 포함 + 가격 변동률 필드 추가.
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `id` | `Long` | 관심종목 ID |
+| `symbol` | `String` | 종목 심볼 |
+| `stockName` | `String` | 종목명 |
+| `market` | `String` | 시장 |
+| `threshold` | `BigDecimal` | MDD 알림 임계값 |
+| `mddPeriod` | `String` | MDD 계산 기간 |
+| `currentMdd` | `BigDecimal\|null` | 현재 MDD 값 |
+| `peakPrice` | `BigDecimal\|null` | 고점 가격 |
+| `currentPrice` | `BigDecimal\|null` | 현재 가격 |
+| `calcDate` | `LocalDate\|null` | MDD 계산일 |
+| `createdAt` | `LocalDateTime` | 등록일시 |
+| `change1d` | `BigDecimal\|null` | 전일 대비 변동률 (%) |
+| `change1w` | `BigDecimal\|null` | 주간 변동률 (5거래일, %) |
+| `change1m` | `BigDecimal\|null` | 월간 변동률 (~21거래일, %) |
+| `changeYtd` | `BigDecimal\|null` | 연초 대비 변동률 (%) |
+
+> `change*` 필드는 `stock_price_stats` 테이블의 최신 레코드에서 읽어온 값. 해당 데이터가 없으면 null.
+
+#### `GET /api/watchlist-items/{id}/prices` Query Parameters
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| `period` | `String` | - | `1M` | 조회 기간 (`1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL`) |
+
+#### PricePointResponse
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `tradeDate` | `LocalDate` | 거래일 |
+| `closePrice` | `BigDecimal` | 종가 |
 
 ---
 
@@ -174,3 +213,9 @@
 | `status` | `String` | 발송 상태 |
 | `message` | `String` | 알림 메시지 |
 | `sentAt` | `LocalDateTime` | 발송일시 |
+| `priceChange1D` | `number\|null` | 전일 대비 변동률 (%) — stock_price_stats 사전 계산값 |
+| `priceChange1W` | `number\|null` | 주간 변동률 (5거래일, %) — stock_price_stats 사전 계산값 |
+| `priceChange1M` | `number\|null` | 월간 변동률 (~21거래일, %) — stock_price_stats 사전 계산값 |
+| `priceChangeYTD` | `number\|null` | 연초 대비 변동률 (%) — stock_price_stats 사전 계산값 |
+
+> priceChange 필드들은 stock_price_stats 테이블에서 읽어온 스케줄러 사전 계산값이며, 해당 날짜의 데이터가 없는 경우 null.
