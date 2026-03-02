@@ -7,7 +7,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.example.drawdownwatch.stock.domain.QDailyPrice.dailyPrice;
 
@@ -27,5 +30,19 @@ public class DailyPriceRepositoryImpl implements DailyPriceRepositoryCustom {
                 )
                 .orderBy(dailyPrice.tradeDate.asc())
                 .fetch();
+    }
+
+    @Override
+    public Map<Long, List<DailyPrice>> findRecentPricesByStockIds(List<Long> stockIds, LocalDate fromDate) {
+        if (stockIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<DailyPrice> prices = queryFactory
+                .selectFrom(dailyPrice)
+                .where(dailyPrice.stock.id.in(stockIds), dailyPrice.tradeDate.goe(fromDate))
+                .orderBy(dailyPrice.stock.id.asc(), dailyPrice.tradeDate.asc())
+                .fetch();
+        return prices.stream()
+                .collect(Collectors.groupingBy(dp -> dp.getStock().getId()));
     }
 }
