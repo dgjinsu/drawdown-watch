@@ -5,6 +5,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import DashboardPage from '@/pages/DashboardPage';
+import StockDetailPage from '@/pages/StockDetailPage';
 import NotificationPage from '@/pages/NotificationPage';
 import NotificationHistoryPage from '@/pages/NotificationHistoryPage';
 
@@ -22,6 +23,7 @@ export default function App() {
           }
         >
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/watchlist/:id" element={<StockDetailPage />} />
           <Route path="/notifications" element={<NotificationPage />} />
           <Route path="/notification-history" element={<NotificationHistoryPage />} />
         </Route>

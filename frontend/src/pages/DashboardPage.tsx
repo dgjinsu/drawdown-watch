@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { watchlistApi } from '@/api/watchlist';
 import type { WatchlistItem, WatchlistAddRequest, WatchlistUpdateRequest, MddPeriod } from '@/types';
 import { cn } from '@/lib/utils';
@@ -292,6 +293,7 @@ function EditDialog({ item, onClose, onUpdated }: EditDialogProps) {
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -387,9 +389,11 @@ export default function DashboardPage() {
                       <TableRow
                         key={item.id}
                         className={cn(
-                          'border-border/50 transition-colors',
+                          'border-border/50 transition-colors cursor-pointer',
                           alert && 'bg-red-50 hover:bg-red-100/80',
+                          !alert && 'hover:bg-muted/30',
                         )}
+                        onClick={() => navigate(`/watchlist/${item.id}`)}
                         style={{ animationDelay: `${0.3 + index * 0.03}s` }}
                       >
                         <TableCell className="px-4">
@@ -414,13 +418,13 @@ export default function DashboardPage() {
                         <TableCell className="px-4 text-center text-muted-foreground text-xs">{item.calcDate ?? '-'}</TableCell>
                         <TableCell className="px-4">
                           <div className="flex justify-center gap-1.5">
-                            <Button variant="ghost" size="icon" onClick={() => setEditItem(item)} aria-label={`${item.symbol} 수정`} className="size-8 cursor-pointer">
+                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditItem(item); }} aria-label={`${item.symbol} 수정`} className="size-8 cursor-pointer">
                               <Pencil className="size-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setDeleteTarget(item)}
+                              onClick={(e) => { e.stopPropagation(); setDeleteTarget(item); }}
                               disabled={deletingId === item.id}
                               aria-label={`${item.symbol} 삭제`}
                               className="size-8 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"

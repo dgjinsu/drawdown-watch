@@ -5,10 +5,16 @@ import com.example.drawdownwatch.global.exception.ErrorCode;
 import com.example.drawdownwatch.mdd.domain.MddSnapshot;
 import com.example.drawdownwatch.mdd.application.port.out.MddSnapshotRepository;
 import com.example.drawdownwatch.mdd.application.service.MddCalculationService;
+import com.example.drawdownwatch.stock.application.dto.PriceChangeRates;
+import com.example.drawdownwatch.stock.domain.DailyPrice;
 import com.example.drawdownwatch.stock.domain.Stock;
+import com.example.drawdownwatch.stock.application.port.out.DailyPriceRepository;
+import com.example.drawdownwatch.stock.application.service.PriceChangeCalculator;
 import com.example.drawdownwatch.stock.application.service.StockService;
 import com.example.drawdownwatch.user.domain.User;
+import com.example.drawdownwatch.watchlist.application.dto.PricePointResponse;
 import com.example.drawdownwatch.watchlist.application.dto.WatchlistAddRequest;
+import com.example.drawdownwatch.watchlist.application.dto.WatchlistItemDetailResponse;
 import com.example.drawdownwatch.watchlist.application.dto.WatchlistItemResponse;
 import com.example.drawdownwatch.watchlist.application.dto.WatchlistUpdateRequest;
 import com.example.drawdownwatch.watchlist.application.port.in.WatchlistUseCase;
@@ -22,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -35,6 +42,8 @@ public class WatchlistService implements WatchlistUseCase {
     private final StockService stockService;
     private final MddCalculationService mddCalculationService;
     private final EntityManager entityManager;
+    private final PriceChangeCalculator priceChangeCalculator;
+    private final DailyPriceRepository dailyPriceRepository;
 
     @Override
     @Transactional
@@ -119,6 +128,73 @@ public class WatchlistService implements WatchlistUseCase {
     public void deleteItem(Long userId, Long itemId) {
         WatchlistItem item = findItemWithOwnerCheck(userId, itemId);
         watchlistItemRepository.delete(item);
+    }
+
+    @Override
+    public WatchlistItemDetailResponse getItemDetail(Long userId, Long itemId) {
+        WatchlistItem item = findItemWithOwnerCheck(userId, itemId);
+        Optional<MddSnapshot> snapshot = mddSnapshotRepository
+                .findTopByWatchlistItemIdOrderByCalcDateDesc(itemId);
+
+        Long stockId = item.getStock().getId();
+
+        Map<Long, PriceChangeRates> ratesMap = priceChangeCalculator.calculateBatch(List.of(stockId));
+        PriceChangeRates rates = ratesMap.getOrDefault(stockId, PriceChangeRates.empty());
+
+        LocalDate priceBaseDate = dailyPriceRepository
+                .findTopByStockIdOrderByTradeDateDesc(stockId)
+                .map(DailyPrice::getTradeDate)
+                .orElse(null);
+
+        return toDetailResponse(item, snapshot.orElse(null), rates, priceBaseDate);
+    }
+
+    @Override
+    public List<PricePointResponse> getItemPrices(Long userId, Long itemId, String period) {
+        WatchlistItem item = findItemWithOwnerCheck(userId, itemId);
+        LocalDate fromDate = periodToFromDate(period);
+
+        List<DailyPrice> prices = dailyPriceRepository
+                .findByStockIdAndTradeDateAfter(item.getStock().getId(), fromDate);
+
+        return prices.stream()
+                .map(p -> new PricePointResponse(p.getTradeDate(), p.getClosePrice()))
+                .toList();
+    }
+
+    private LocalDate periodToFromDate(String period) {
+        LocalDate today = LocalDate.now();
+        return switch (period.toUpperCase()) {
+            case "1W" -> today.minusWeeks(1);
+            case "1M" -> today.minusMonths(1);
+            case "3M" -> today.minusMonths(3);
+            case "6M" -> today.minusMonths(6);
+            case "1Y" -> today.minusYears(1);
+            case "YTD" -> today.withDayOfYear(1);
+            case "ALL" -> LocalDate.of(2000, 1, 1);
+            default -> today.minusMonths(1);
+        };
+    }
+
+    private WatchlistItemDetailResponse toDetailResponse(WatchlistItem item, MddSnapshot snapshot, PriceChangeRates rates, LocalDate priceBaseDate) {
+        return new WatchlistItemDetailResponse(
+                item.getId(),
+                item.getStock().getSymbol(),
+                item.getStock().getName(),
+                item.getStock().getMarket(),
+                item.getThreshold(),
+                item.getMddPeriod(),
+                snapshot != null ? snapshot.getMddValue() : null,
+                snapshot != null ? snapshot.getPeakPrice() : null,
+                snapshot != null ? snapshot.getCurrentPrice() : null,
+                snapshot != null ? snapshot.getCalcDate() : null,
+                item.getCreatedAt(),
+                rates.change1D(),
+                rates.change1W(),
+                rates.change1M(),
+                rates.changeYTD(),
+                priceBaseDate
+        );
     }
 
     private WatchlistItem findItemWithOwnerCheck(Long userId, Long itemId) {

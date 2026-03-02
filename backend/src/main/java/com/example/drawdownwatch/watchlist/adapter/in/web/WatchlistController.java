@@ -1,6 +1,8 @@
 package com.example.drawdownwatch.watchlist.adapter.in.web;
 
+import com.example.drawdownwatch.watchlist.application.dto.PricePointResponse;
 import com.example.drawdownwatch.watchlist.application.dto.WatchlistAddRequest;
+import com.example.drawdownwatch.watchlist.application.dto.WatchlistItemDetailResponse;
 import com.example.drawdownwatch.watchlist.application.dto.WatchlistItemResponse;
 import com.example.drawdownwatch.watchlist.application.dto.WatchlistUpdateRequest;
 import com.example.drawdownwatch.watchlist.application.port.in.WatchlistUseCase;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -58,6 +61,20 @@ public class WatchlistController {
     public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
         watchlistService.deleteItem(getCurrentUserId(), id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<WatchlistItemDetailResponse> getItemDetail(@PathVariable Long id) {
+        WatchlistItemDetailResponse response = watchlistService.getItemDetail(getCurrentUserId(), id);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/prices")
+    public ResponseEntity<List<PricePointResponse>> getItemPrices(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1M") String period) {
+        List<PricePointResponse> response = watchlistService.getItemPrices(getCurrentUserId(), id, period);
+        return ResponseEntity.ok(response);
     }
 
     private Long getCurrentUserId() {
