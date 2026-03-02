@@ -8,6 +8,9 @@ import com.example.drawdownwatch.notification.application.port.out.NotificationS
 import com.example.drawdownwatch.notification.application.port.out.NotificationSettingRepository;
 import com.example.drawdownwatch.notification.domain.NotificationLog;
 import com.example.drawdownwatch.notification.domain.NotificationSetting;
+import com.example.drawdownwatch.stock.application.dto.PriceChangeRates;
+import com.example.drawdownwatch.stock.application.port.out.StockPriceStatRepository;
+import com.example.drawdownwatch.stock.domain.StockPriceStat;
 import com.example.drawdownwatch.watchlist.domain.WatchlistItem;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -31,6 +37,7 @@ public class NotificationService implements NotificationLogUseCase {
     private final NotificationSettingRepository notificationSettingRepository;
     private final NotificationLogRepository notificationLogRepository;
     private final List<NotificationSenderPort> senders;
+    private final StockPriceStatRepository stockPriceStatRepository;
 
     @Value("${app.notification.cooldown-hours}")
     private int cooldownHours;
@@ -96,12 +103,29 @@ public class NotificationService implements NotificationLogUseCase {
         LocalDateTime startDateTime = startDate != null ? startDate.atStartOfDay() : null;
         LocalDateTime endDateTime = endDate != null ? endDate.plusDays(1).atStartOfDay() : null;
 
-        return notificationLogRepository
-                .findByUserIdWithFilters(userId, status, channelType, startDateTime, endDateTime, pageable)
-                .map(this::toLogResponse);
+        Page<NotificationLog> logPage = notificationLogRepository
+                .findByUserIdWithFilters(userId, status, channelType, startDateTime, endDateTime, pageable);
+
+        List<Long> stockIds = logPage.getContent().stream()
+                .filter(log -> log.getWatchlistItem() != null && log.getWatchlistItem().getStock() != null)
+                .map(log -> log.getWatchlistItem().getStock().getId())
+                .distinct()
+                .toList();
+
+        Map<Long, PriceChangeRates> ratesMap = loadPriceChangeRates(stockIds);
+
+        return logPage.map(log -> {
+            PriceChangeRates rates = PriceChangeRates.empty();
+            if (log.getWatchlistItem() != null && log.getWatchlistItem().getStock() != null) {
+                rates = ratesMap.getOrDefault(
+                        log.getWatchlistItem().getStock().getId(),
+                        PriceChangeRates.empty());
+            }
+            return toLogResponse(log, rates);
+        });
     }
 
-    private NotificationLogResponse toLogResponse(NotificationLog log) {
+    private NotificationLogResponse toLogResponse(NotificationLog log, PriceChangeRates rates) {
         String stockSymbol = null;
         String stockName = null;
         if (log.getWatchlistItem() != null && log.getWatchlistItem().getStock() != null) {
@@ -117,8 +141,26 @@ public class NotificationService implements NotificationLogUseCase {
                 log.getThreshold(),
                 log.getStatus(),
                 log.getMessage(),
-                log.getSentAt()
+                log.getSentAt(),
+                rates.change1D(),
+                rates.change1W(),
+                rates.change1M(),
+                rates.changeYTD()
         );
+    }
+
+    private Map<Long, PriceChangeRates> loadPriceChangeRates(List<Long> stockIds) {
+        if (stockIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<StockPriceStat> stats = stockPriceStatRepository.findLatestByStockIds(stockIds);
+        Map<Long, PriceChangeRates> result = new HashMap<>();
+        for (StockPriceStat stat : stats) {
+            result.put(stat.getStock().getId(), new PriceChangeRates(
+                    stat.getChange1d(), stat.getChange1w(),
+                    stat.getChange1m(), stat.getChangeYtd()));
+        }
+        return result;
     }
 
     private void saveLog(WatchlistItem item, MddSnapshot snapshot, String channelType,

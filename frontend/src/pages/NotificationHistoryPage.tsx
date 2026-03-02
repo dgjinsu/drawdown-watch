@@ -17,6 +17,20 @@ interface PageData {
   number: number;
 }
 
+function formatChangeRate(value: number | null | undefined): { text: string; className: string } {
+  if (value === null || value === undefined) {
+    return { text: '-', className: 'text-muted-foreground' };
+  }
+  const sign = value > 0 ? '+' : '';
+  const text = `${sign}${value.toFixed(2)}%`;
+  const className = value > 0
+    ? 'text-emerald-600'
+    : value < 0
+      ? 'text-red-600'
+      : 'text-muted-foreground';
+  return { text, className };
+}
+
 function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString('ko-KR', {
     year: 'numeric',
@@ -156,6 +170,10 @@ export default function NotificationHistoryPage() {
                   <tr className="border-b bg-muted/30">
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">발송 시각</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">종목</th>
+                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">1D</th>
+                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">1W</th>
+                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">1M</th>
+                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">YTD</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">채널</th>
                     <th className="px-4 py-3 text-right font-medium text-muted-foreground">MDD</th>
                     <th className="px-4 py-3 text-right font-medium text-muted-foreground">임계값</th>
@@ -179,6 +197,14 @@ export default function NotificationHistoryPage() {
                           <div className="text-xs text-muted-foreground">{log.stockName}</div>
                         )}
                       </td>
+                      {(['priceChange1D', 'priceChange1W', 'priceChange1M', 'priceChangeYTD'] as const).map((key) => {
+                        const { text, className } = formatChangeRate(log[key]);
+                        return (
+                          <td key={key} className={`px-4 py-3 text-right font-mono text-xs whitespace-nowrap ${className}`}>
+                            {text}
+                          </td>
+                        );
+                      })}
                       <td className="px-4 py-3">
                         <Badge
                           variant="outline"

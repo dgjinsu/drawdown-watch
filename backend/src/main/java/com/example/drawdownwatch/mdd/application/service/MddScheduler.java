@@ -3,6 +3,7 @@ package com.example.drawdownwatch.mdd.application.service;
 import com.example.drawdownwatch.mdd.domain.MddSnapshot;
 import com.example.drawdownwatch.notification.application.service.NotificationService;
 import com.example.drawdownwatch.stock.application.port.out.StockRepository;
+import com.example.drawdownwatch.stock.application.service.PriceChangeCalculator;
 import com.example.drawdownwatch.stock.application.service.StockService;
 import com.example.drawdownwatch.watchlist.application.port.out.WatchlistItemRepository;
 import com.example.drawdownwatch.watchlist.domain.WatchlistItem;
@@ -24,6 +25,7 @@ public class MddScheduler {
     private final StockService stockService;
     private final MddCalculationService mddCalculationService;
     private final NotificationService notificationService;
+    private final PriceChangeCalculator priceChangeCalculator;
 
     @Scheduled(cron = "${app.scheduler.krx-cron}", zone = "Asia/Seoul")
     public void processKrxMarket() {
@@ -47,6 +49,12 @@ public class MddScheduler {
                         .orElseThrow(() -> new IllegalArgumentException("종목 없음 (id=" + stockId + ")"));
 
                 stockService.fetchAndSavePrices(stock, today.minusDays(5), today);
+
+                try {
+                    priceChangeCalculator.calculateAndSave(stock);
+                } catch (Exception e) {
+                    log.error("종목 {} 변동률 계산 실패: {}", stockId, e.getMessage());
+                }
 
                 List<WatchlistItem> items = watchlistItemRepository.findAllByStockId(stockId);
                 for (WatchlistItem item : items) {

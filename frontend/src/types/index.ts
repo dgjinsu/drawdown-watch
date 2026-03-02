@@ -75,6 +75,10 @@ export interface NotificationLog {
   status: 'SENT' | 'FAILED' | 'SKIPPED';
   message: string;
   sentAt: string;
+  priceChange1D: number | null;
+  priceChange1W: number | null;
+  priceChange1M: number | null;
+  priceChangeYTD: number | null;
 }
 
 export interface NotificationLogSearchParams {
@@ -93,6 +97,22 @@ export interface PageResponse<T> {
   number: number;
   size: number;
 }
+
+// Stock Detail
+export interface WatchlistItemDetail extends WatchlistItem {
+  change1d: number | null;
+  change1w: number | null;
+  change1m: number | null;
+  changeYtd: number | null;
+  priceBaseDate: string | null;
+}
+
+export interface PricePoint {
+  tradeDate: string;
+  closePrice: number;
+}
+
+export type ChartPeriod = '1W' | '1M' | '3M' | '6M' | '1Y' | 'YTD' | 'ALL';
 
 // Error
 export interface ErrorResponse {
