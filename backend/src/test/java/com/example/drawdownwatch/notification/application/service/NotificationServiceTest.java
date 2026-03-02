@@ -5,12 +5,15 @@ import com.example.drawdownwatch.notification.adapter.out.external.DiscordSender
 import com.example.drawdownwatch.notification.adapter.out.external.EmailSender;
 import com.example.drawdownwatch.notification.adapter.out.external.SlackSender;
 import com.example.drawdownwatch.notification.adapter.out.external.TelegramSender;
+import com.example.drawdownwatch.notification.application.dto.NotificationLogResponse;
 import com.example.drawdownwatch.notification.application.port.out.NotificationLogRepository;
 import com.example.drawdownwatch.notification.application.port.out.NotificationSenderPort;
 import com.example.drawdownwatch.notification.application.port.out.NotificationSettingRepository;
 import com.example.drawdownwatch.notification.domain.NotificationLog;
 import com.example.drawdownwatch.notification.domain.NotificationSetting;
+import com.example.drawdownwatch.stock.application.port.out.StockPriceStatRepository;
 import com.example.drawdownwatch.stock.domain.Stock;
+import com.example.drawdownwatch.stock.domain.StockPriceStat;
 import com.example.drawdownwatch.user.domain.User;
 import com.example.drawdownwatch.watchlist.domain.WatchlistItem;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +25,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -33,8 +39,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -61,6 +69,9 @@ class NotificationServiceTest {
 
     @Mock
     private DiscordSender discordSender;
+
+    @Mock
+    private StockPriceStatRepository stockPriceStatRepository;
 
     private NotificationService notificationService;
 
@@ -91,7 +102,8 @@ class NotificationServiceTest {
         given(discordSender.supports("DISCORD")).willReturn(true);
 
         List<NotificationSenderPort> senders = List.of(telegramSender, slackSender, emailSender, discordSender);
-        notificationService = new NotificationService(notificationSettingRepository, notificationLogRepository, senders);
+        notificationService = new NotificationService(
+                notificationSettingRepository, notificationLogRepository, senders, stockPriceStatRepository);
         ReflectionTestUtils.setField(notificationService, "cooldownHours", 24);
     }
 
@@ -595,5 +607,180 @@ class NotificationServiceTest {
         assertThat(logCaptor.getValue().getStatus()).isEqualTo("FAILED");
         assertThat(logCaptor.getValue().getChannelType()).isEqualTo("DISCORD");
         assertThat(logCaptor.getValue().getMessage()).contains("Discord webhook 오류");
+    }
+
+    // -----------------------------------------------------------------------
+    // getNotificationLogs 테스트
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("알림 이력 조회: 변동률 데이터가 응답에 포함됨")
+    void getNotificationLogs_변동률_응답포함() {
+        // Given
+        User user = buildUser(1L);
+        Stock stock = buildStock(1L, "AAPL");
+        WatchlistItem item = buildWatchlistItem(1L, user, stock);
+
+        NotificationLog log = NotificationLog.builder()
+                .id(10L)
+                .user(user)
+                .watchlistItem(item)
+                .channelType("TELEGRAM")
+                .mddValue(new BigDecimal("-25.0000"))
+                .threshold(BigDecimal.valueOf(-20.00))
+                .status("SENT")
+                .message("MDD 경보")
+                .build();
+
+        PageRequest pageable = PageRequest.of(0, 10);
+        Page<NotificationLog> logPage = new PageImpl<>(List.of(log), pageable, 1);
+
+        StockPriceStat stat = StockPriceStat.builder()
+                .stock(stock)
+                .calcDate(LocalDate.now())
+                .currentPrice(new BigDecimal("100.0000"))
+                .change1d(new BigDecimal("1.5000"))
+                .change1w(new BigDecimal("3.2000"))
+                .change1m(new BigDecimal("-5.1000"))
+                .changeYtd(new BigDecimal("12.4000"))
+                .build();
+
+        given(notificationLogRepository.findByUserIdWithFilters(
+                eq(1L), isNull(), isNull(), isNull(), isNull(), eq(pageable)))
+                .willReturn(logPage);
+        given(stockPriceStatRepository.findLatestByStockIds(anyList()))
+                .willReturn(List.of(stat));
+
+        // When
+        Page<NotificationLogResponse> result = notificationService.getNotificationLogs(
+                1L, null, null, null, null, pageable);
+
+        // Then
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        NotificationLogResponse response = result.getContent().get(0);
+        assertThat(response.stockSymbol()).isEqualTo("AAPL");
+        assertThat(response.channelType()).isEqualTo("TELEGRAM");
+        assertThat(response.priceChange1D().compareTo(new BigDecimal("1.5000"))).isZero();
+        assertThat(response.priceChange1W().compareTo(new BigDecimal("3.2000"))).isZero();
+        assertThat(response.priceChange1M().compareTo(new BigDecimal("-5.1000"))).isZero();
+        assertThat(response.priceChangeYTD().compareTo(new BigDecimal("12.4000"))).isZero();
+    }
+
+    @Test
+    @DisplayName("알림 이력 조회: 종목 데이터 없는 로그는 변동률 null")
+    void getNotificationLogs_종목없는_로그_변동률_null() {
+        // Given
+        User user = buildUser(1L);
+
+        NotificationLog log = NotificationLog.builder()
+                .id(20L)
+                .user(user)
+                .watchlistItem(null)
+                .channelType("SLACK")
+                .mddValue(new BigDecimal("-30.0000"))
+                .threshold(BigDecimal.valueOf(-20.00))
+                .status("SENT")
+                .message("MDD 경보")
+                .build();
+
+        PageRequest pageable = PageRequest.of(0, 10);
+        Page<NotificationLog> logPage = new PageImpl<>(List.of(log), pageable, 1);
+
+        given(notificationLogRepository.findByUserIdWithFilters(
+                eq(1L), isNull(), isNull(), isNull(), isNull(), eq(pageable)))
+                .willReturn(logPage);
+        given(stockPriceStatRepository.findLatestByStockIds(anyList()))
+                .willReturn(Collections.emptyList());
+
+        // When
+        Page<NotificationLogResponse> result = notificationService.getNotificationLogs(
+                1L, null, null, null, null, pageable);
+
+        // Then
+        NotificationLogResponse response = result.getContent().get(0);
+        assertThat(response.priceChange1D()).isNull();
+        assertThat(response.priceChange1W()).isNull();
+        assertThat(response.priceChange1M()).isNull();
+        assertThat(response.priceChangeYTD()).isNull();
+    }
+
+    @Test
+    @DisplayName("알림 이력 조회: 여러 종목 포함 시 각 종목에 맞는 변동률 매핑")
+    void getNotificationLogs_복수_종목_변동률_매핑() {
+        // Given
+        User user = buildUser(1L);
+        Stock stockApple = buildStock(1L, "AAPL");
+        Stock stockGoogle = buildStock(2L, "GOOGL");
+        WatchlistItem itemApple = buildWatchlistItem(1L, user, stockApple);
+        WatchlistItem itemGoogle = buildWatchlistItem(2L, user, stockGoogle);
+
+        NotificationLog logApple = NotificationLog.builder()
+                .id(10L)
+                .user(user)
+                .watchlistItem(itemApple)
+                .channelType("TELEGRAM")
+                .mddValue(new BigDecimal("-25.0000"))
+                .threshold(BigDecimal.valueOf(-20.00))
+                .status("SENT")
+                .message("AAPL MDD 경보")
+                .build();
+
+        NotificationLog logGoogle = NotificationLog.builder()
+                .id(11L)
+                .user(user)
+                .watchlistItem(itemGoogle)
+                .channelType("SLACK")
+                .mddValue(new BigDecimal("-35.0000"))
+                .threshold(BigDecimal.valueOf(-30.00))
+                .status("SENT")
+                .message("GOOGL MDD 경보")
+                .build();
+
+        PageRequest pageable = PageRequest.of(0, 10);
+        Page<NotificationLog> logPage = new PageImpl<>(List.of(logApple, logGoogle), pageable, 2);
+
+        StockPriceStat appleStat = StockPriceStat.builder()
+                .stock(stockApple)
+                .calcDate(LocalDate.now())
+                .currentPrice(new BigDecimal("120.0000"))
+                .change1d(new BigDecimal("2.0000"))
+                .change1w(null)
+                .change1m(null)
+                .changeYtd(new BigDecimal("10.0000"))
+                .build();
+        StockPriceStat googleStat = StockPriceStat.builder()
+                .stock(stockGoogle)
+                .calcDate(LocalDate.now())
+                .currentPrice(new BigDecimal("180.0000"))
+                .change1d(new BigDecimal("-1.5000"))
+                .change1w(null)
+                .change1m(null)
+                .changeYtd(new BigDecimal("-8.0000"))
+                .build();
+
+        given(notificationLogRepository.findByUserIdWithFilters(
+                eq(1L), isNull(), isNull(), isNull(), isNull(), eq(pageable)))
+                .willReturn(logPage);
+        given(stockPriceStatRepository.findLatestByStockIds(anyList()))
+                .willReturn(List.of(appleStat, googleStat));
+
+        // When
+        Page<NotificationLogResponse> result = notificationService.getNotificationLogs(
+                1L, null, null, null, null, pageable);
+
+        // Then
+        List<NotificationLogResponse> content = result.getContent();
+        NotificationLogResponse appleResp = content.stream()
+                .filter(r -> "AAPL".equals(r.stockSymbol()))
+                .findFirst().orElseThrow();
+        NotificationLogResponse googleResp = content.stream()
+                .filter(r -> "GOOGL".equals(r.stockSymbol()))
+                .findFirst().orElseThrow();
+
+        assertThat(appleResp.priceChange1D().compareTo(new BigDecimal("2.0000"))).isZero();
+        assertThat(appleResp.priceChangeYTD().compareTo(new BigDecimal("10.0000"))).isZero();
+
+        assertThat(googleResp.priceChange1D().compareTo(new BigDecimal("-1.5000"))).isZero();
+        assertThat(googleResp.priceChangeYTD().compareTo(new BigDecimal("-8.0000"))).isZero();
     }
 }
