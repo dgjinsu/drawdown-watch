@@ -10,7 +10,7 @@ tools: [Read, Edit, Write, Glob, Grep, Bash]
 
 ## 기술 환경
 
-- 백엔드: JUnit 5 + Mockito + Testcontainers(PostgreSQL)
+- 백엔드: JUnit 5 + Mockito + H2 (테스트 DB)
 - 프론트엔드: Vitest + React Testing Library
 
 ## 코드 리뷰 체크리스트

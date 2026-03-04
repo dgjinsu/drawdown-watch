@@ -5,8 +5,8 @@
 ## 기술 스택
 
 - Backend: Java 21, Spring Boot 3.5, Gradle, PostgreSQL, Flyway
-- Frontend: React 18, TypeScript, Vite, TanStack Query, Recharts, Tailwind CSS
-- 알림: Telegram Bot API, Slack Webhook
+- Frontend: React 19, TypeScript, Vite, Zustand, React Router v7, Recharts, Tailwind CSS, shadcn/ui
+- 알림: Telegram Bot API, Slack Webhook, Email (SMTP), Discord Webhook
 
 ## 구조
 

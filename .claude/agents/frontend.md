@@ -10,43 +10,47 @@ tools: [Read, Edit, Write, Glob, Grep, Bash]
 
 ## 기술 환경
 
-- React 18 + TypeScript + Vite
-- TanStack Query v5 (서버 상태)
-- React Router v6
+- React 19 + TypeScript + Vite
+- Zustand (클라이언트 상태 관리)
+- React Router v7
 - Axios (HTTP)
 - Recharts (차트)
-- Tailwind CSS (스타일)
+- Tailwind CSS + shadcn/ui (스타일 + UI 컴포넌트)
+- lucide-react (아이콘)
 
 ## 프로젝트 구조
 
 ```
 frontend/src/
-├── api/{도메인}Api.ts       (API 함수)
-├── components/{도메인}/     (재사용 컴포넌트)
-├── pages/{페이지}Page.tsx   (라우트 페이지)
-├── hooks/use{도메인}.ts     (TanStack Query 훅)
-├── types/{도메인}.ts        (타입 정의)
-└── utils/formatters.ts     (포매팅)
+├── api/{도메인}.ts           (API 함수)
+├── components/
+│   ├── ui/                  (shadcn/ui 컴포넌트)
+│   └── {공통컴포넌트}.tsx
+├── pages/{페이지}Page.tsx    (라우트 페이지)
+├── store/{도메인}Store.ts    (Zustand 스토어)
+├── types/index.ts           (타입 정의)
+└── lib/utils.ts             (유틸리티)
 ```
 
 ## 코드 작성 규칙
 
 ### API 연동 패턴
 ```typescript
-// api/{도메인}Api.ts
+// api/{도메인}.ts
 export const stockApi = {
   getAll: () => client.get<Stock[]>('/api/stocks'),
 };
-
-// hooks/useStocks.ts
-export const useStocks = () =>
-  useQuery({ queryKey: ['stocks'], queryFn: () => stockApi.getAll().then(r => r.data) });
 ```
+
+### 상태 관리
+- 서버 상태: API 호출 후 컴포넌트 내에서 직접 관리
+- 클라이언트 상태: Zustand 스토어 (인증 등)
 
 ### 컴포넌트
 - 함수형 + 훅 패턴
 - Props는 interface로 정의
 - 로딩/에러/빈 상태 반드시 처리
+- UI 기본 요소는 `components/ui/`의 shadcn/ui 컴포넌트 활용
 
 ### 스타일
 - Tailwind 유틸리티 클래스

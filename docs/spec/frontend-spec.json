@@ -1,0 +1,142 @@
+{
+  "updatedAt": "2026-03-03",
+  "stack": {
+    "framework": "React 19 + TypeScript",
+    "build": "Vite",
+    "routing": "react-router-dom v7 (BrowserRouter)",
+    "stateManagement": "Zustand",
+    "http": "Axios (/api baseURL, JWT 인터셉터)",
+    "ui": "shadcn/ui (Radix 기반)",
+    "styling": "Tailwind CSS",
+    "chart": "Recharts (AreaChart)",
+    "toast": "sonner (Toaster)",
+    "icons": "lucide-react"
+  },
+  "routes": [
+    { "path": "/login", "page": "LoginPage", "desc": "이메일/비밀번호 로그인", "auth": false, "api": ["POST /api/auth/login"] },
+    { "path": "/signup", "page": "SignupPage", "desc": "회원가입", "auth": false, "api": ["POST /api/auth/signup"] },
+    { "path": "/", "page": "DashboardPage", "desc": "워치리스트 CRUD + MDD 현황 테이블", "auth": true, "api": ["GET /api/watchlist-items", "POST /api/watchlist-items", "PATCH /api/watchlist-items/:id", "DELETE /api/watchlist-items/:id"] },
+    { "path": "/watchlist/:id", "page": "StockDetailPage", "desc": "종목 상세 (MDD, 변동률, 가격 차트)", "auth": true, "api": ["GET /api/watchlist-items/:id/detail", "GET /api/watchlist-items/:id/prices"] },
+    { "path": "/notifications", "page": "NotificationPage", "desc": "알림 채널 설정 관리", "auth": true, "api": ["GET /api/notification-settings", "POST /api/notification-settings", "PUT /api/notification-settings/:id", "DELETE /api/notification-settings/:id", "POST /api/notification-settings/:id/test"] },
+    { "path": "/notification-history", "page": "NotificationHistoryPage", "desc": "알림 발송 이력 조회", "auth": true, "api": ["GET /api/notification-logs"] },
+    { "path": "*", "page": null, "desc": "미매칭 → / 리다이렉트", "auth": false, "api": [] }
+  ],
+  "auth": {
+    "tokenStorage": "localStorage (accessToken, refreshToken)",
+    "requestInterceptor": "Authorization: Bearer {accessToken} 자동 첨부",
+    "responseInterceptor": "401 → POST /api/auth/refresh로 갱신, 실패 시 /login 리다이렉트",
+    "protectedRoute": "useAuthStore.isAuthenticated false → /login Navigate"
+  },
+  "pages": {
+    "LoginPage": {
+      "path": "frontend/src/pages/LoginPage.tsx",
+      "components": ["Card", "CardContent", "CardFooter", "CardHeader", "Input", "Label", "Button"],
+      "store": ["useAuthStore (login, loading, error, isAuthenticated, clearError)"]
+    },
+    "SignupPage": {
+      "path": "frontend/src/pages/SignupPage.tsx",
+      "components": ["Card", "CardContent", "CardFooter", "CardHeader", "Input", "Label", "Button"],
+      "store": ["useAuthStore (signup, loading, error, isAuthenticated, clearError)"],
+      "validation": ["비밀번호 최소 8자", "비밀번호 일치 검증"]
+    },
+    "DashboardPage": {
+      "path": "frontend/src/pages/DashboardPage.tsx",
+      "components": ["Card", "Input", "Label", "Button", "Badge", "Dialog", "AlertDialog", "Select", "Table"],
+      "internalComponents": {
+        "SummaryStats": "총 종목 수, 경고 종목 수, 평균 MDD, 최대 낙폭 카드",
+        "AddDialog": "종목 추가 (심볼, 임계값, MDD 기간)",
+        "EditDialog": "종목 수정 (임계값, MDD 기간)"
+      },
+      "api": ["watchlistApi (getAll, add, update, remove)"],
+      "features": ["MDD 수치별 색상 (>-10% 초록, >-20% 노랑, <=-20% 빨강)", "임계값 초과 행 하이라이트", "행 클릭 → /watchlist/:id"]
+    },
+    "StockDetailPage": {
+      "path": "frontend/src/pages/StockDetailPage.tsx",
+      "components": ["Card", "Badge", "Button"],
+      "libraries": ["recharts (AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer)"],
+      "icons": ["ArrowLeft", "TrendingDown", "TrendingUp", "DollarSign", "Target", "BarChart3", "Minus"],
+      "internalComponents": {
+        "ChangeRateBadge": "가격 변동률 표시 (라벨, 값, 방향 아이콘)",
+        "CustomTooltip": "차트 툴팁 (날짜 + 종가)"
+      },
+      "api": ["watchlistApi (getDetail, getPrices)"],
+      "features": ["상단 정보 카드 (현재 MDD, 현재가, 고점가, 임계값)", "변동률 섹션: 1D, 1W, 1M, YTD", "가격 차트 기간 선택: 1W/1M/3M/6M/1Y/YTD/ALL", "비정상 ID/403/404 → / 리다이렉트"]
+    },
+    "NotificationPage": {
+      "path": "frontend/src/pages/NotificationPage.tsx",
+      "components": ["Card", "Input", "Label", "Button", "Badge"],
+      "api": ["notificationApi (getAll, create, update, remove, test)"],
+      "features": ["채널별 입력폼 (Telegram:ChatID, Slack:Webhook, Email:자동, Discord:Webhook)", "활성/비활성 상태", "Webhook URL 마스킹 (maskWebhookUrl)"]
+    },
+    "NotificationHistoryPage": {
+      "path": "frontend/src/pages/NotificationHistoryPage.tsx",
+      "components": ["Card", "Badge", "Select", "Button", "Input", "Label"],
+      "api": ["notificationApi (getLogs)"],
+      "features": ["필터: 상태/채널/시작일/종료일", "변동률 컬럼: 양수 초록, 음수 빨강, null 회색", "font-mono text-right 정렬", "페이지네이션 (기본 20건)"]
+    },
+    "Layout": {
+      "path": "frontend/src/components/Layout.tsx",
+      "components": ["Button"],
+      "store": ["useAuthStore (logout)"],
+      "features": ["상단 내비게이션 (Dashboard, Notifications, 알림 이력)", "로그아웃 버튼", "Outlet 하위 라우트 렌더링"]
+    },
+    "ProtectedRoute": {
+      "path": "frontend/src/components/ProtectedRoute.tsx",
+      "store": ["useAuthStore (isAuthenticated)"],
+      "features": ["미인증 → /login 리다이렉트"]
+    }
+  },
+  "api": {
+    "client": { "path": "frontend/src/api/client.ts", "desc": "Axios 인스턴스 (baseURL: /api), 요청/응답 인터셉터" },
+    "auth": { "path": "frontend/src/api/auth.ts", "methods": ["signup → POST /api/auth/signup", "login → POST /api/auth/login", "logout → POST /api/auth/logout"] },
+    "watchlist": { "path": "frontend/src/api/watchlist.ts", "methods": ["getAll → GET /api/watchlist-items", "getOne → GET /api/watchlist-items/:id", "getDetail → GET /api/watchlist-items/:id/detail", "getPrices → GET /api/watchlist-items/:id/prices", "add → POST /api/watchlist-items", "update → PATCH /api/watchlist-items/:id", "remove → DELETE /api/watchlist-items/:id"] },
+    "notification": { "path": "frontend/src/api/notification.ts", "methods": ["getAll → GET /api/notification-settings", "create → POST /api/notification-settings", "update → PUT /api/notification-settings/:id", "remove → DELETE /api/notification-settings/:id", "test → POST /api/notification-settings/:id/test", "getLogs → GET /api/notification-logs"] }
+  },
+  "store": {
+    "authStore": {
+      "path": "frontend/src/store/authStore.ts",
+      "state": { "isAuthenticated": "boolean (localStorage accessToken 유무)", "loading": "boolean", "error": "string|null" },
+      "actions": ["login(data)", "signup(data)", "logout()", "clearError()"]
+    }
+  },
+  "types": {
+    "path": "frontend/src/types/index.ts",
+    "definitions": {
+      "SignupRequest": { "kind": "interface", "fields": ["email: string", "password: string"] },
+      "LoginRequest": { "kind": "interface", "fields": ["email: string", "password: string"] },
+      "TokenResponse": { "kind": "interface", "fields": ["accessToken: string", "refreshToken: string", "expiresIn: number"] },
+      "WatchlistAddRequest": { "kind": "interface", "fields": ["symbol: string", "threshold: number", "mddPeriod: MddPeriod"] },
+      "WatchlistUpdateRequest": { "kind": "interface", "fields": ["threshold?: number", "mddPeriod?: MddPeriod"] },
+      "MddPeriod": { "kind": "type", "values": ["4W", "12W", "26W", "52W"] },
+      "WatchlistItem": { "kind": "interface", "fields": ["id: number", "symbol: string", "stockName: string", "market: string", "threshold: number", "mddPeriod: MddPeriod", "currentMdd: number", "peakPrice: number", "currentPrice: number", "calcDate: string", "createdAt: string"] },
+      "WatchlistItemDetail": { "kind": "interface", "extends": "WatchlistItem", "fields": ["change1d: number|null", "change1w: number|null", "change1m: number|null", "changeYtd: number|null"] },
+      "PricePoint": { "kind": "interface", "fields": ["tradeDate: string", "closePrice: number"] },
+      "ChartPeriod": { "kind": "type", "values": ["1W", "1M", "3M", "6M", "1Y", "YTD", "ALL"] },
+      "ChannelType": { "kind": "type", "values": ["TELEGRAM", "SLACK", "EMAIL", "DISCORD"] },
+      "NotificationSettingRequest": { "kind": "interface", "fields": ["channelType: ChannelType", "telegramChatId?: string", "slackWebhookUrl?: string", "discordWebhookUrl?: string"] },
+      "NotificationSetting": { "kind": "interface", "fields": ["id: number", "channelType: ChannelType", "telegramChatId: string", "slackWebhookUrl: string", "discordWebhookUrl: string", "email: string", "enabled: boolean", "createdAt: string"] },
+      "NotificationLog": { "kind": "interface", "fields": ["id: number", "channelType: ChannelType", "stockSymbol: string", "stockName: string", "mddValue: number", "threshold: number", "status: string", "message: string", "sentAt: string", "priceChange1D: number|null", "priceChange1W: number|null", "priceChange1M: number|null", "priceChangeYTD: number|null"] },
+      "NotificationLogSearchParams": { "kind": "interface", "fields": ["status?: string", "channelType?: string", "startDate?: string", "endDate?: string", "page?: number", "size?: number"] },
+      "PageResponse<T>": { "kind": "interface", "fields": ["content: T[]", "totalElements: number", "totalPages: number", "number: number", "size: number"] },
+      "ErrorResponse": { "kind": "interface", "fields": ["code: string", "message: string"] }
+    }
+  },
+  "uiComponents": {
+    "path": "frontend/src/components/ui/",
+    "list": [
+      { "file": "button.tsx", "exports": ["Button"], "usedBy": ["LoginPage", "SignupPage", "DashboardPage", "StockDetailPage", "NotificationPage", "NotificationHistoryPage", "Layout"] },
+      { "file": "input.tsx", "exports": ["Input"], "usedBy": ["LoginPage", "SignupPage", "DashboardPage", "NotificationPage", "NotificationHistoryPage"] },
+      { "file": "label.tsx", "exports": ["Label"], "usedBy": ["LoginPage", "SignupPage", "DashboardPage", "NotificationPage", "NotificationHistoryPage"] },
+      { "file": "card.tsx", "exports": ["Card", "CardContent", "CardFooter", "CardHeader"], "usedBy": ["LoginPage", "SignupPage", "DashboardPage", "StockDetailPage", "NotificationPage", "NotificationHistoryPage"] },
+      { "file": "table.tsx", "exports": ["Table", "TableBody", "TableCell", "TableHead", "TableHeader", "TableRow"], "usedBy": ["DashboardPage"] },
+      { "file": "badge.tsx", "exports": ["Badge"], "usedBy": ["DashboardPage", "StockDetailPage", "NotificationPage", "NotificationHistoryPage"] },
+      { "file": "separator.tsx", "exports": ["Separator"], "usedBy": [] },
+      { "file": "alert-dialog.tsx", "exports": ["AlertDialog", "AlertDialogAction", "AlertDialogCancel", "AlertDialogContent", "AlertDialogDescription", "AlertDialogFooter", "AlertDialogHeader", "AlertDialogTitle"], "usedBy": ["DashboardPage"] },
+      { "file": "select.tsx", "exports": ["Select", "SelectContent", "SelectItem", "SelectTrigger", "SelectValue"], "usedBy": ["DashboardPage", "NotificationHistoryPage"] },
+      { "file": "dialog.tsx", "exports": ["Dialog", "DialogContent", "DialogHeader", "DialogTitle", "DialogDescription", "DialogFooter"], "usedBy": ["DashboardPage"] }
+    ]
+  },
+  "utils": {
+    "cn": { "path": "frontend/src/lib/utils.ts", "desc": "clsx + tailwind-merge 클래스 병합" }
+  }
+}

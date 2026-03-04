@@ -1,0 +1,145 @@
+{
+  "updatedAt": "2026-03-03",
+  "migrationVersion": "V4",
+  "tables": {
+    "users": {
+      "desc": "사용자",
+      "entity": "User extends BaseEntity",
+      "columns": {
+        "id": { "type": "BIGSERIAL", "constraints": "PRIMARY KEY" },
+        "email": { "type": "VARCHAR(255)", "constraints": "NOT NULL, UNIQUE" },
+        "password": { "type": "VARCHAR(255)", "constraints": "NOT NULL" },
+        "created_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" },
+        "updated_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" }
+      },
+      "indexes": ["idx_users_email ON users(email)"]
+    },
+    "stocks": {
+      "desc": "종목 마스터",
+      "entity": "Stock extends BaseEntity",
+      "columns": {
+        "id": { "type": "BIGSERIAL", "constraints": "PRIMARY KEY" },
+        "symbol": { "type": "VARCHAR(20)", "constraints": "NOT NULL, UNIQUE" },
+        "name": { "type": "VARCHAR(255)" },
+        "market": { "type": "VARCHAR(10)", "constraints": "NOT NULL" },
+        "created_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" },
+        "updated_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" }
+      },
+      "indexes": ["idx_stocks_symbol ON stocks(symbol)"]
+    },
+    "daily_prices": {
+      "desc": "일별 시세",
+      "entity": "DailyPrice (BaseEntity 미상속, @PrePersist createdAt)",
+      "columns": {
+        "id": { "type": "BIGSERIAL", "constraints": "PRIMARY KEY" },
+        "stock_id": { "type": "BIGINT", "constraints": "NOT NULL, FK → stocks(id) ON DELETE CASCADE" },
+        "trade_date": { "type": "DATE", "constraints": "NOT NULL" },
+        "close_price": { "type": "NUMERIC(20,4)", "constraints": "NOT NULL" },
+        "created_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" }
+      },
+      "unique": ["(stock_id, trade_date)"],
+      "indexes": ["idx_daily_prices_stock_date ON daily_prices(stock_id, trade_date DESC)"]
+    },
+    "watchlist_items": {
+      "desc": "워치리스트 항목",
+      "entity": "WatchlistItem extends BaseEntity",
+      "columns": {
+        "id": { "type": "BIGSERIAL", "constraints": "PRIMARY KEY" },
+        "user_id": { "type": "BIGINT", "constraints": "NOT NULL, FK → users(id) ON DELETE CASCADE" },
+        "stock_id": { "type": "BIGINT", "constraints": "NOT NULL, FK → stocks(id) ON DELETE CASCADE" },
+        "threshold": { "type": "NUMERIC(5,2)", "constraints": "NOT NULL, DEFAULT -20.00" },
+        "mdd_period": { "type": "VARCHAR(10)", "constraints": "NOT NULL, DEFAULT '52W'" },
+        "created_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" },
+        "updated_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" }
+      },
+      "unique": ["(user_id, stock_id)"],
+      "indexes": ["idx_watchlist_items_user ON watchlist_items(user_id)"]
+    },
+    "mdd_snapshots": {
+      "desc": "MDD 스냅샷",
+      "entity": "MddSnapshot (BaseEntity 미상속, @PrePersist createdAt)",
+      "columns": {
+        "id": { "type": "BIGSERIAL", "constraints": "PRIMARY KEY" },
+        "watchlist_item_id": { "type": "BIGINT", "constraints": "NOT NULL, FK → watchlist_items(id) ON DELETE CASCADE" },
+        "calc_date": { "type": "DATE", "constraints": "NOT NULL" },
+        "peak_price": { "type": "NUMERIC(20,4)", "constraints": "NOT NULL" },
+        "current_price": { "type": "NUMERIC(20,4)", "constraints": "NOT NULL" },
+        "mdd_value": { "type": "NUMERIC(7,4)", "constraints": "NOT NULL" },
+        "created_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" }
+      },
+      "unique": ["(watchlist_item_id, calc_date)"],
+      "indexes": ["idx_mdd_snapshots_item_date ON mdd_snapshots(watchlist_item_id, calc_date DESC)"]
+    },
+    "notification_settings": {
+      "desc": "알림 설정",
+      "entity": "NotificationSetting extends BaseEntity",
+      "columns": {
+        "id": { "type": "BIGSERIAL", "constraints": "PRIMARY KEY" },
+        "user_id": { "type": "BIGINT", "constraints": "NOT NULL, FK → users(id) ON DELETE CASCADE" },
+        "channel_type": { "type": "VARCHAR(20)", "constraints": "NOT NULL" },
+        "telegram_chat_id": { "type": "VARCHAR(100)" },
+        "slack_webhook_url": { "type": "VARCHAR(500)" },
+        "discord_webhook_url": { "type": "VARCHAR(500)", "note": "V3 추가" },
+        "enabled": { "type": "BOOLEAN", "constraints": "NOT NULL, DEFAULT TRUE" },
+        "created_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" },
+        "updated_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" }
+      },
+      "unique": ["(user_id, channel_type)"],
+      "indexes": ["idx_notification_settings_user ON notification_settings(user_id)"]
+    },
+    "notification_logs": {
+      "desc": "알림 발송 로그",
+      "entity": "NotificationLog (BaseEntity 미상속, @PrePersist sentAt)",
+      "columns": {
+        "id": { "type": "BIGSERIAL", "constraints": "PRIMARY KEY" },
+        "user_id": { "type": "BIGINT", "constraints": "NOT NULL, FK → users(id) ON DELETE CASCADE" },
+        "watchlist_item_id": { "type": "BIGINT", "constraints": "NOT NULL, FK → watchlist_items(id) ON DELETE CASCADE" },
+        "channel_type": { "type": "VARCHAR(20)", "constraints": "NOT NULL" },
+        "mdd_value": { "type": "NUMERIC(7,4)", "constraints": "NOT NULL" },
+        "threshold": { "type": "NUMERIC(5,2)", "constraints": "NOT NULL" },
+        "status": { "type": "VARCHAR(20)", "constraints": "NOT NULL" },
+        "message": { "type": "TEXT" },
+        "sent_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" }
+      },
+      "indexes": [
+        "idx_notification_logs_item_sent ON notification_logs(watchlist_item_id, sent_at DESC)",
+        "idx_notification_logs_cooldown ON notification_logs(watchlist_item_id, status, sent_at DESC)"
+      ]
+    },
+    "stock_price_stats": {
+      "desc": "종목별 가격 변동률 사전 계산 결과",
+      "entity": "StockPriceStat extends BaseEntity",
+      "columns": {
+        "id": { "type": "BIGSERIAL", "constraints": "PRIMARY KEY" },
+        "stock_id": { "type": "BIGINT", "constraints": "NOT NULL, FK → stocks(id) ON DELETE CASCADE" },
+        "calc_date": { "type": "DATE", "constraints": "NOT NULL" },
+        "current_price": { "type": "NUMERIC(20,4)", "constraints": "NOT NULL" },
+        "change_1d": { "type": "NUMERIC(10,4)", "nullable": true },
+        "change_1w": { "type": "NUMERIC(10,4)", "nullable": true },
+        "change_1m": { "type": "NUMERIC(10,4)", "nullable": true },
+        "change_ytd": { "type": "NUMERIC(10,4)", "nullable": true },
+        "created_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" },
+        "updated_at": { "type": "TIMESTAMP", "constraints": "NOT NULL, DEFAULT NOW()" }
+      },
+      "unique": ["(stock_id, calc_date)"],
+      "indexes": ["idx_stock_price_stats_stock_date ON stock_price_stats(stock_id, calc_date DESC)"]
+    }
+  },
+  "relationships": {
+    "users → watchlist_items": "1:N",
+    "stocks → watchlist_items": "1:N",
+    "stocks → daily_prices": "1:N",
+    "stocks → stock_price_stats": "1:N",
+    "watchlist_items → mdd_snapshots": "1:N",
+    "users → notification_settings": "1:N",
+    "users → notification_logs": "1:N",
+    "watchlist_items → notification_logs": "1:N"
+  },
+  "fkPolicy": "모든 외래 키에 ON DELETE CASCADE 적용",
+  "migrations": [
+    { "version": "V1", "file": "V1__init_schema.sql", "desc": "초기 스키마 (users, stocks, daily_prices, watchlist_items, mdd_snapshots, notification_settings, notification_logs, refresh_tokens)" },
+    { "version": "V2", "file": "V2__drop_refresh_tokens.sql", "desc": "refresh_tokens 테이블 삭제 (Redis로 이전)" },
+    { "version": "V3", "file": "V3__add_discord_webhook_url.sql", "desc": "notification_settings에 discord_webhook_url 컬럼 추가" },
+    { "version": "V4", "file": "V4__create_stock_price_stats.sql", "desc": "stock_price_stats 테이블 생성" }
+  ]
+}

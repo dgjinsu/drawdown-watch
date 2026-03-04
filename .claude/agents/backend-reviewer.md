@@ -24,30 +24,39 @@ disallowedTools: [Edit, Write, Bash, NotebookEdit]
 ### 레이어 구조
 
 ```
-domain/          순수 도메인 (Entity, 도메인 서비스, Port 인터페이스)
-application/     유스케이스 (Application Service, DTO)
+domain/                Entity만 (순수 도메인)
+application/
+  ├── port/in/         UseCase 인터페이스 (인바운드 포트)
+  ├── port/out/        Repository 인터페이스, 외부 서비스 포트 (아웃바운드 포트)
+  ├── service/         UseCase 구현체 (Service)
+  └── dto/
 adapter/
-  ├── in/        인바운드 어댑터 (Controller)
-  └── out/       아웃바운드 어댑터 (JPA Repository 구현, 외부 API 클라이언트)
+  ├── in/web/          Controller (UseCase 인터페이스에 의존)
+  └── out/
+      ├── persistence/ RepositoryImpl (QueryDSL, @Repository)
+      └── external/    RestClient 기반 외부 API 클라이언트
 ```
 
 ### 의존성 방향 (핵심 규칙)
 
 ```
-adapter/in → application → domain ← application ← adapter/out
+adapter/in → application(port/in) → application(service) → application(port/out) ← adapter/out
+                                          ↓
+                                       domain (Entity)
 ```
 
 - **의존성은 반드시 안쪽(domain)을 향해야 한다**
-- domain은 어떤 외부 레이어에도 의존하지 않는다
-- application은 domain에만 의존한다
-- adapter는 application 또는 domain에 의존한다
+- domain은 Entity만 포함하며 어떤 외부 레이어에도 의존하지 않는다
+- application/port/out에 아웃바운드 포트(Repository, 외부 서비스 인터페이스)를 정의한다
+- application/port/in에 인바운드 포트(UseCase 인터페이스)를 정의한다 (Controller가 있는 도메인만)
+- adapter는 application 포트에 의존한다
 - **같은 레이어 간 참조**: adapter끼리 직접 참조 금지, application끼리는 포트를 통해서만
 
 ### 포트와 어댑터
 
-- **인바운드 포트**: 유스케이스 인터페이스 (application이 domain에 정의할 수도 있음)
-- **아웃바운드 포트**: domain 또는 application 레이어에 인터페이스로 정의 (Repository 인터페이스, 외부 서비스 인터페이스)
-- **인바운드 어댑터**: Controller (인바운드 포트를 호출)
+- **인바운드 포트**: application/port/in에 UseCase 인터페이스로 정의 (AuthUseCase, WatchlistUseCase 등)
+- **아웃바운드 포트**: application/port/out에 인터페이스로 정의 (Repository, MarketDataPort, NotificationSenderPort 등)
+- **인바운드 어댑터**: Controller (UseCase 인터페이스를 주입받아 호출)
 - **아웃바운드 어댑터**: JPA Repository 구현체, RestClient 기반 외부 API 클라이언트 (아웃바운드 포트를 구현)
 
 ## 체크리스트

@@ -40,11 +40,14 @@ DB 스키마 설계와 Flyway 마이그레이션을 작성해.
 3. 대응하는 JPA 엔티티 코드도 함께 작성
 4. 기존 데이터 보존 확인
 
-## 현재 스키마
+## 현재 마이그레이션
 
-V1__init.sql: users, stocks, price_history, mdd_records, watchlists, watchlist_items, notification_configs, notification_logs
+- V1__init_schema.sql: users, stocks, daily_prices, mdd_snapshots, watchlist_items, notification_settings, notification_logs
+- V2__drop_refresh_tokens.sql
+- V3__add_discord_webhook_url.sql
+- V4__create_stock_price_stats.sql
 
-새 마이그레이션은 V2부터.
+새 마이그레이션은 **V5**부터. 작업 전 반드시 `backend/src/main/resources/db/migration/` 디렉토리를 확인해서 최신 버전을 파악해.
 
 ## 주의사항
 

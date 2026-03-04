@@ -1,0 +1,167 @@
+{
+  "updatedAt": "2026-03-03",
+  "common": {
+    "baseUrl": "/api",
+    "auth": "JWT Bearer Token (Authorization: Bearer {accessToken})",
+    "publicEndpoints": ["/api/auth/signup", "/api/auth/login", "/api/auth/refresh"]
+  },
+  "endpoints": {
+    "auth": {
+      "prefix": "/api/auth",
+      "routes": [
+        { "method": "POST", "path": "/api/auth/signup", "desc": "회원가입", "auth": false, "request": "SignupRequest", "response": "TokenResponse", "status": 201 },
+        { "method": "POST", "path": "/api/auth/login", "desc": "로그인", "auth": false, "request": "LoginRequest", "response": "TokenResponse", "status": 200 },
+        { "method": "POST", "path": "/api/auth/refresh", "desc": "토큰 갱신", "auth": false, "request": "RefreshTokenRequest", "response": "TokenResponse", "status": 200 },
+        { "method": "POST", "path": "/api/auth/logout", "desc": "로그아웃", "auth": true, "request": null, "response": "Map<String,String>", "status": 200 }
+      ]
+    },
+    "watchlist": {
+      "prefix": "/api/watchlist-items",
+      "routes": [
+        { "method": "POST", "path": "/api/watchlist-items", "desc": "관심종목 추가", "auth": true, "request": "WatchlistAddRequest", "response": "WatchlistItemResponse", "status": 201 },
+        { "method": "GET", "path": "/api/watchlist-items", "desc": "관심종목 목록 조회", "auth": true, "request": null, "response": "List<WatchlistItemResponse>", "status": 200 },
+        { "method": "GET", "path": "/api/watchlist-items/{id}", "desc": "관심종목 단건 조회", "auth": true, "request": null, "response": "WatchlistItemResponse", "status": 200 },
+        { "method": "PATCH", "path": "/api/watchlist-items/{id}", "desc": "관심종목 수정", "auth": true, "request": "WatchlistUpdateRequest", "response": "WatchlistItemResponse", "status": 200 },
+        { "method": "DELETE", "path": "/api/watchlist-items/{id}", "desc": "관심종목 삭제", "auth": true, "request": null, "response": null, "status": 204 },
+        { "method": "GET", "path": "/api/watchlist-items/{id}/detail", "desc": "관심종목 상세 조회 (가격 변동률 포함)", "auth": true, "request": null, "response": "WatchlistItemDetailResponse", "status": 200 },
+        { "method": "GET", "path": "/api/watchlist-items/{id}/prices", "desc": "관심종목 가격 이력 조회", "auth": true, "request": "QueryParams", "response": "List<PricePointResponse>", "status": 200, "queryParams": { "period": { "type": "String", "required": false, "default": "1M", "values": ["1W","1M","3M","6M","1Y","YTD","ALL"] } } }
+      ]
+    },
+    "notificationSettings": {
+      "prefix": "/api/notification-settings",
+      "routes": [
+        { "method": "POST", "path": "/api/notification-settings", "desc": "알림 채널 등록", "auth": true, "request": "NotificationSettingRequest", "response": "NotificationSettingResponse", "status": 201 },
+        { "method": "GET", "path": "/api/notification-settings", "desc": "알림 설정 목록 조회", "auth": true, "request": null, "response": "List<NotificationSettingResponse>", "status": 200 },
+        { "method": "PUT", "path": "/api/notification-settings/{id}", "desc": "알림 설정 수정", "auth": true, "request": "NotificationSettingRequest", "response": "NotificationSettingResponse", "status": 200 },
+        { "method": "DELETE", "path": "/api/notification-settings/{id}", "desc": "알림 설정 삭제", "auth": true, "request": null, "response": null, "status": 204 },
+        { "method": "PATCH", "path": "/api/notification-settings/{id}/toggle", "desc": "알림 활성화/비활성화 토글", "auth": true, "request": null, "response": "NotificationSettingResponse", "status": 200 },
+        { "method": "POST", "path": "/api/notification-settings/{id}/test", "desc": "테스트 알림 발송", "auth": true, "request": null, "response": "Map<String,String>", "status": 200 }
+      ]
+    },
+    "notificationLogs": {
+      "prefix": "/api/notification-logs",
+      "routes": [
+        { "method": "GET", "path": "/api/notification-logs", "desc": "알림 발송 이력 조회 (페이징)", "auth": true, "request": "QueryParams", "response": "Page<NotificationLogResponse>", "status": 200, "queryParams": { "status": { "type": "String", "required": false }, "channelType": { "type": "String", "required": false }, "startDate": { "type": "LocalDate", "required": false }, "endDate": { "type": "LocalDate", "required": false }, "page": { "type": "int", "required": false, "default": 0 }, "size": { "type": "int", "required": false, "default": 20 } } }
+      ]
+    }
+  },
+  "dtos": {
+    "SignupRequest": {
+      "type": "record",
+      "fields": {
+        "email": { "type": "String", "required": true, "validation": "@NotBlank @Email" },
+        "password": { "type": "String", "required": true, "validation": "@NotBlank @Size(min=8, max=50)" }
+      }
+    },
+    "LoginRequest": {
+      "type": "record",
+      "fields": {
+        "email": { "type": "String", "required": true, "validation": "@NotBlank @Email" },
+        "password": { "type": "String", "required": true, "validation": "@NotBlank" }
+      }
+    },
+    "RefreshTokenRequest": {
+      "type": "record",
+      "fields": {
+        "refreshToken": { "type": "String", "required": true, "validation": "@NotBlank" }
+      }
+    },
+    "TokenResponse": {
+      "type": "record",
+      "fields": {
+        "accessToken": { "type": "String" },
+        "refreshToken": { "type": "String" },
+        "expiresIn": { "type": "long" }
+      }
+    },
+    "WatchlistAddRequest": {
+      "type": "record",
+      "fields": {
+        "symbol": { "type": "String", "required": true, "validation": "@NotBlank" },
+        "threshold": { "type": "BigDecimal", "required": false, "validation": "@DecimalMax(\"0\")" },
+        "mddPeriod": { "type": "String", "required": false, "validation": "@Pattern(\"^(4W|12W|26W|52W)$\")" }
+      }
+    },
+    "WatchlistUpdateRequest": {
+      "type": "record",
+      "fields": {
+        "threshold": { "type": "BigDecimal", "required": false, "validation": "@DecimalMax(\"0\")" },
+        "mddPeriod": { "type": "String", "required": false, "validation": "@Pattern(\"^(4W|12W|26W|52W)$\")" }
+      }
+    },
+    "WatchlistItemResponse": {
+      "type": "record",
+      "fields": {
+        "id": { "type": "Long" },
+        "symbol": { "type": "String" },
+        "stockName": { "type": "String" },
+        "market": { "type": "String" },
+        "threshold": { "type": "BigDecimal" },
+        "mddPeriod": { "type": "String" },
+        "currentMdd": { "type": "BigDecimal" },
+        "peakPrice": { "type": "BigDecimal" },
+        "currentPrice": { "type": "BigDecimal" },
+        "calcDate": { "type": "LocalDate" },
+        "createdAt": { "type": "LocalDateTime" }
+      }
+    },
+    "WatchlistItemDetailResponse": {
+      "type": "record",
+      "extends": "WatchlistItemResponse",
+      "fields": {
+        "change1d": { "type": "BigDecimal|null", "desc": "전일 대비 변동률 (%)" },
+        "change1w": { "type": "BigDecimal|null", "desc": "주간 변동률 (5거래일, %)" },
+        "change1m": { "type": "BigDecimal|null", "desc": "월간 변동률 (~21거래일, %)" },
+        "changeYtd": { "type": "BigDecimal|null", "desc": "연초 대비 변동률 (%)" }
+      },
+      "note": "change 필드는 stock_price_stats 최신 레코드에서 조회. 데이터 없으면 null"
+    },
+    "PricePointResponse": {
+      "type": "record",
+      "fields": {
+        "tradeDate": { "type": "LocalDate" },
+        "closePrice": { "type": "BigDecimal" }
+      }
+    },
+    "NotificationSettingRequest": {
+      "type": "record",
+      "fields": {
+        "channelType": { "type": "String", "required": true, "validation": "@NotBlank @Pattern(\"^(TELEGRAM|SLACK|EMAIL|DISCORD)$\")" },
+        "telegramChatId": { "type": "String", "required": false },
+        "slackWebhookUrl": { "type": "String", "required": false },
+        "discordWebhookUrl": { "type": "String", "required": false }
+      }
+    },
+    "NotificationSettingResponse": {
+      "type": "record",
+      "fields": {
+        "id": { "type": "Long" },
+        "channelType": { "type": "String" },
+        "telegramChatId": { "type": "String" },
+        "slackWebhookUrl": { "type": "String", "desc": "마스킹 처리됨" },
+        "discordWebhookUrl": { "type": "String", "desc": "마스킹 처리됨" },
+        "email": { "type": "String", "desc": "EMAIL 채널일 때만" },
+        "enabled": { "type": "boolean" },
+        "createdAt": { "type": "LocalDateTime" }
+      }
+    },
+    "NotificationLogResponse": {
+      "type": "record",
+      "fields": {
+        "id": { "type": "Long" },
+        "channelType": { "type": "String" },
+        "stockSymbol": { "type": "String" },
+        "stockName": { "type": "String" },
+        "mddValue": { "type": "BigDecimal" },
+        "threshold": { "type": "BigDecimal" },
+        "status": { "type": "String" },
+        "message": { "type": "String" },
+        "sentAt": { "type": "LocalDateTime" },
+        "priceChange1D": { "type": "BigDecimal|null", "desc": "전일 대비 변동률 (%) - stock_price_stats 사전계산값" },
+        "priceChange1W": { "type": "BigDecimal|null", "desc": "주간 변동률 (%) - stock_price_stats 사전계산값" },
+        "priceChange1M": { "type": "BigDecimal|null", "desc": "월간 변동률 (%) - stock_price_stats 사전계산값" },
+        "priceChangeYTD": { "type": "BigDecimal|null", "desc": "연초 대비 변동률 (%) - stock_price_stats 사전계산값" }
+      }
+    }
+  }
+}
